@@ -284,6 +284,15 @@ h3 { font-size: var(--text-6); font-weight: 600; }
   margin-bottom: var(--space-6);
   border-bottom: 1px solid var(--border);
   position: relative;
+  /* Fixed to the height a header with a title *and* a top-right CTA
+     button naturally needs (button > bare h1 line-box) — without this,
+     pages whose header is just an <h1> (dashboard, settings, detail
+     pages) render a shorter header than pages with a "+ New …" button
+     (clients/tasks/notifications), so the divider line — and everything
+     below it — jumps up and down when navigating between them. A plain
+     h1 now just centers (align-items: center, above) in the same
+     reserved height instead. */
+  min-height: 4.75rem;
 }
 
 .page-header::after {
