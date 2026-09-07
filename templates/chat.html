@@ -1,0 +1,47 @@
+%rebase('layout', title='Ask AI')
+<div class="chat-page">
+  <div class="page-header"><h1>Ask AI</h1></div>
+  %if backend != 'openai':
+    <p class="muted">Backend: local Ollama. If nothing answers, check OLLAMA_HOST/OLLAMA_MODEL or set OPENAI_API_KEY.</p>
+  %end
+
+  <div class="chat-log">
+    %for m in messages:
+      %if m['role'] == 'user':
+        <div class="chat-msg chat-msg-user">{{m['html']}}</div>
+      %else:
+        <div class="chat-msg chat-msg-assistant">{{!m['html']}}</div>
+      %end
+    %end
+    %if not messages:
+      <p class="muted">Ask something about your clients or tasks.</p>
+    %end
+  </div>
+
+  %if pending:
+    <div class="chat-pending">
+      <p><strong>The assistant wants to:</strong></p>
+      <ul class="plain-list">
+        %for p in pending:
+          <li>{{p['description']}}</li>
+        %end
+      </ul>
+      <div class="chat-pending-actions">
+        <form method="post" action="{{url_for('chat_confirm')}}" class="inline-form">
+          <input type="hidden" name="_csrf_token" value="{{csrf_token()}}">
+          <button class="btn btn-primary" type="submit">Confirm</button>
+        </form>
+        <form method="post" action="{{url_for('chat_cancel')}}" class="inline-form">
+          <input type="hidden" name="_csrf_token" value="{{csrf_token()}}">
+          <button class="btn btn-danger" type="submit">Cancel</button>
+        </form>
+      </div>
+    </div>
+  %else:
+    <form method="post" action="{{url_for('chat_send')}}" class="inline-form chat-form">
+      <input type="hidden" name="_csrf_token" value="{{csrf_token()}}">
+      <input type="text" name="message" placeholder="Ask about a client or task…" autofocus required>
+      <button class="btn btn-primary" type="submit">Send</button>
+    </form>
+  %end
+</div>

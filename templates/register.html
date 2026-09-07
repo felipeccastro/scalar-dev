@@ -1,0 +1,21 @@
+%rebase('layout', title='Set up your team')
+<div class="auth-card">
+  <h1>Set up your team</h1>
+  <p class="muted">You're the first person here — this creates the owner account.</p>
+  <form method="post" action="{{url_for('register_owner_submit')}}">
+    <input type="hidden" name="_csrf_token" value="{{csrf_token()}}">
+    <div class="field">
+      <label for="name">Your name</label>
+      <input type="text" id="name" name="name" required autofocus>
+    </div>
+    <div class="field">
+      <label for="email">Email</label>
+      <input type="email" id="email" name="email" required>
+    </div>
+    <div class="field">
+      <label for="password">Password</label>
+      <input type="password" id="password" name="password" minlength="8" required>
+    </div>
+    <button class="btn btn-primary" type="submit">Create account</button>
+  </form>
+</div>

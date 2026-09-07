@@ -1,0 +1,50 @@
+%rebase('layout', title='Dashboard')
+<div class="page-header"><h1>Dashboard</h1></div>
+
+<div class="dash-stats">
+  <div class="dash-stat">
+    <div class="dash-stat-icon">
+      <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="8" r="4"/><path d="M4 20c0-4 3.5-7 8-7s8 3 8 7"/></svg>
+    </div>
+    <div><div class="dash-stat-num">{{open_clients}}</div><div class="dash-stat-label">Open clients</div></div>
+  </div>
+  <div class="dash-stat">
+    <div class="dash-stat-icon">
+      <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"/><circle cx="12" cy="12" r="3"/></svg>
+    </div>
+    <div><div class="dash-stat-num">{{open_tasks}}</div><div class="dash-stat-label">Open tasks</div></div>
+  </div>
+  <div class="dash-stat">
+    <div class="dash-stat-icon">
+      <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"/><path d="M8 12l3 3 5-6"/></svg>
+    </div>
+    <div><div class="dash-stat-num">{{done_tasks}}</div><div class="dash-stat-label">Done tasks</div></div>
+  </div>
+</div>
+
+<div class="dash-cols">
+  <section class="dash-col">
+    <h2>Recent clients</h2>
+    %if recent_clients:
+      <ul class="plain-list">
+        %for c in recent_clients:
+          <li><a href="{{url_for('client_detail', client_id=c.id)}}">{{c.name}}</a> <span class="badge badge-{{c.status}}"><i class="dot"></i>{{status_label(c.status)}}</span></li>
+        %end
+      </ul>
+    %else:
+      <p class="muted">No clients yet. <a href="{{url_for('clients_list')}}">Add one</a>.</p>
+    %end
+  </section>
+  <section class="dash-col">
+    <h2>Recent tasks</h2>
+    %if recent_tasks:
+      <ul class="plain-list">
+        %for t in recent_tasks:
+          <li><a href="{{url_for('task_detail', task_id=t.id)}}">{{t.title}}</a> <span class="badge badge-{{t.status}}"><i class="dot"></i>{{status_label(t.status)}}</span></li>
+        %end
+      </ul>
+    %else:
+      <p class="muted">No tasks yet. <a href="{{url_for('tasks_list')}}">Add one</a>.</p>
+    %end
+  </section>
+</div>

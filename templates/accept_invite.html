@@ -1,0 +1,17 @@
+%rebase('layout', title='Join the team')
+<div class="auth-card">
+  <h1>Join the team</h1>
+  <p class="muted">Set a name and password for {{invite.email}}.</p>
+  <form method="post" action="{{url_for('accept_invite_submit', token=invite.token)}}">
+    <input type="hidden" name="_csrf_token" value="{{csrf_token()}}">
+    <div class="field">
+      <label for="name">Your name</label>
+      <input type="text" id="name" name="name" required autofocus>
+    </div>
+    <div class="field">
+      <label for="password">Password</label>
+      <input type="password" id="password" name="password" minlength="8" required>
+    </div>
+    <button class="btn btn-primary" type="submit">Join</button>
+  </form>
+</div>

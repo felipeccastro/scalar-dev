@@ -1,0 +1,19 @@
+%rebase('layout', title='Log in')
+<div class="auth-card">
+  <h1>Log in</h1>
+  <form method="post" action="{{url_for('login_submit')}}">
+    <input type="hidden" name="_csrf_token" value="{{csrf_token()}}">
+    <div class="field">
+      <label for="email">Email</label>
+      <input type="email" id="email" name="email" required autofocus>
+    </div>
+    <div class="field">
+      <div class="field-label-row">
+        <label for="password">Password</label>
+        <a class="auth-link" href="{{url_for('forgot_password')}}">Forgot password?</a>
+      </div>
+      <input type="password" id="password" name="password" required>
+    </div>
+    <button class="btn btn-primary" type="submit">Log in</button>
+  </form>
+</div>

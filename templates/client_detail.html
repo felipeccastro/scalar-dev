@@ -1,0 +1,98 @@
+%rebase('layout', title=client.name, back_url=url_for('clients_list'))
+<div class="page-header">
+  <a class="page-header-back" href="{{url_for('clients_list')}}">&larr; Clients</a>
+  <h1>{{client.name}}</h1>
+</div>
+
+<div class="detail-cols">
+  <div class="detail-main">
+    <form method="post" action="{{url_for('client_update', client_id=client.id)}}" class="card-form">
+      <input type="hidden" name="_csrf_token" value="{{csrf_token()}}">
+      <div class="field"><label>Name</label><input type="text" name="name" value="{{client.name}}" required></div>
+      <div class="field"><label>Email</label><input type="email" name="email" value="{{client.email}}"></div>
+      <div class="field"><label>Phone</label><input type="text" name="phone" value="{{client.phone}}"></div>
+      <div class="field"><label>Company</label><input type="text" name="company" value="{{client.company}}"></div>
+      <div class="field">
+        <label>Status</label>
+        <select name="status">
+          %for s in statuses:
+            <option value="{{s}}" {{'selected' if client.status == s else ''}}>{{status_label(s)}}</option>
+          %end
+        </select>
+      </div>
+      <div class="field">
+        <label>Notes</label>
+        <textarea name="notes" rows="6" class="pre-wrap-input">{{client.notes}}</textarea>
+      </div>
+      <button class="btn btn-primary" type="submit">Save</button>
+    </form>
+
+    <form method="post" action="{{url_for('client_archive', client_id=client.id)}}" class="inline-form">
+      <input type="hidden" name="_csrf_token" value="{{csrf_token()}}">
+      <button class="btn btn-danger" type="submit" onclick="return confirm('Archive this client?')">Archive client</button>
+    </form>
+
+    <h2>Tasks</h2>
+    %if tasks:
+      <ul class="plain-list">
+        %for t in tasks:
+          <li><a href="{{url_for('task_detail', task_id=t.id)}}">{{t.title}}</a> <span class="badge badge-{{t.status}}"><i class="dot"></i>{{status_label(t.status)}}</span></li>
+        %end
+      </ul>
+    %else:
+      <p class="muted">No tasks linked to this client yet.</p>
+    %end
+
+    <h2>Attachments</h2>
+    <form method="post" action="{{url_for('attachment_upload')}}" enctype="multipart/form-data" class="inline-form">
+      <input type="hidden" name="_csrf_token" value="{{csrf_token()}}">
+      <input type="hidden" name="subject_type" value="client">
+      <input type="hidden" name="subject_id" value="{{client.id}}">
+      <input type="file" name="file" required>
+      <button class="btn" type="submit">Upload</button>
+    </form>
+    %if attachments:
+      <ul class="plain-list">
+        %for a in attachments:
+          <li>
+            <a href="{{url_for('attachment_download', attachment_id=a.id)}}">{{a.filename}}</a>
+            <form method="post" action="{{url_for('attachment_delete', attachment_id=a.id)}}" class="inline-form">
+              <input type="hidden" name="_csrf_token" value="{{csrf_token()}}">
+              <button class="btn-link" type="submit">Remove</button>
+            </form>
+          </li>
+        %end
+      </ul>
+    %end
+  </div>
+
+  <div class="detail-side">
+    <h2>Comments</h2>
+    %for c in comments:
+      <div class="comment">
+        <div class="comment-meta"><span class="avatar">{{(c.author.name or "?")[0].upper()}}</span>{{c.author.name}} &middot; {{c.created_at.strftime('%b %d, %Y %H:%M')}}</div>
+        <div class="comment-body pre-wrap">{{c.body}}</div>
+        %if c.author_id == current_user().id:
+          <form method="post" action="{{url_for('comment_delete', comment_id=c.id)}}" class="inline-form">
+            <input type="hidden" name="_csrf_token" value="{{csrf_token()}}">
+            <button class="btn-link" type="submit">Delete</button>
+          </form>
+        %end
+      </div>
+    %end
+    <form method="post" action="{{url_for('comment_create')}}" class="card-form">
+      <input type="hidden" name="_csrf_token" value="{{csrf_token()}}">
+      <input type="hidden" name="subject_type" value="client">
+      <input type="hidden" name="subject_id" value="{{client.id}}">
+      <textarea name="body" rows="3" placeholder="Add a comment" required></textarea>
+      <button class="btn" type="submit">Comment</button>
+    </form>
+
+    <h2>Activity</h2>
+    <ul class="activity-list">
+      %for a in activity:
+        <li><span class="activity-verb">{{a.verb}}</span> by {{a.actor.name if a.actor_id else 'someone'}} &middot; {{a.created_at.strftime('%b %d, %H:%M')}}</li>
+      %end
+    </ul>
+  </div>
+</div>

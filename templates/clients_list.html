@@ -1,0 +1,56 @@
+%rebase('layout', title='Clients', back_url=url_for('dashboard'))
+<div class="page-header">
+  <h1>Clients</h1>
+  <button type="button" class="btn btn-primary" commandfor="new-client-dialog" command="show-modal">+ New client</button>
+</div>
+
+<form method="get" action="{{url_for('clients_list')}}" class="search-form">
+  <input type="search" name="q" value="{{q}}" placeholder="Search clients…">
+  <button class="btn" type="submit">Search</button>
+  %if q:
+    <a class="btn-link" href="{{url_for('clients_list')}}">Clear</a>
+  %end
+</form>
+
+<dialog id="new-client-dialog">
+  <div class="dialog-head">
+    <span class="dialog-title">New client</span>
+    <button type="button" class="dialog-close" commandfor="new-client-dialog" command="close" aria-label="Close">✕</button>
+  </div>
+  <form method="post" action="{{url_for('clients_create')}}">
+    <input type="hidden" name="_csrf_token" value="{{csrf_token()}}">
+    <div class="dialog-body inline-form">
+      <input type="text" name="name" placeholder="Name" required autofocus>
+      <input type="email" name="email" placeholder="Email">
+      <input type="text" name="phone" placeholder="Phone">
+      <input type="text" name="company" placeholder="Company">
+      <select name="status">
+        %for s in statuses:
+          <option value="{{s}}">{{status_label(s)}}</option>
+        %end
+      </select>
+      <textarea name="notes" placeholder="Notes"></textarea>
+    </div>
+    <div class="dialog-foot">
+      <button type="button" class="btn" commandfor="new-client-dialog" command="close">Cancel</button>
+      <button class="btn btn-primary" type="submit">Add client</button>
+    </div>
+  </form>
+</dialog>
+
+<table class="data-table">
+  <thead><tr><th>Name</th><th>Company</th><th>Email</th><th>Status</th></tr></thead>
+  <tbody>
+    %for c in clients:
+      <tr onclick="location.href='{{url_for('client_detail', client_id=c.id)}}'">
+        <td>{{c.name}}</td>
+        <td>{{c.company}}</td>
+        <td>{{c.email}}</td>
+        <td><span class="badge badge-{{c.status}}"><i class="dot"></i>{{status_label(c.status)}}</span></td>
+      </tr>
+    %end
+    %if not clients:
+      <tr><td colspan="4" class="muted">No clients yet.</td></tr>
+    %end
+  </tbody>
+</table>

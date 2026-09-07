@@ -1,0 +1,27 @@
+%# Renders this request's flashed messages (see utils.py flash()) as
+%# oat.toast() popups instead of an inline banner, so a confirmation
+%# doesn't sit in the page until the user dismisses it. `flashes` is
+%# passed in already popped (get_flashed_messages() is one-shot).
+%#
+%# Wrapped in DOMContentLoaded: oat.min.js loads with `defer` in <head>,
+%# which runs it after parsing but right before that event fires — this
+%# inline <script>, being in <body>, would otherwise run immediately
+%# during parsing, before `ot` exists.
+%#
+%# category -> variant: flash() categories are "success"/"error"/"info";
+%# oat's toast only themes "success"/"warning"/"danger", so "error" maps
+%# to "danger" here (matching the inline .flash-error banner's own color
+%# before this).
+%if flashes:
+  <script>
+  document.addEventListener('DOMContentLoaded', () => {
+    %for f in flashes:
+      ot.toast(
+        {{!js_string(f['message'])}},
+        null,
+        {variant: {{!js_string('danger' if f['category'] == 'error' else f['category'])}}}
+      );
+    %end
+  });
+  </script>
+%end

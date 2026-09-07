@@ -1,0 +1,9 @@
+# No pip install needed. peewee and bottle are vendored as plain .py files
+# in vendor/ — see vendor/LICENSE.peewee and vendor/LICENSE.bottle (both
+# MIT). Run with:
+#   python3 app.py
+#
+# `make` (see Makefile) runs the same app under gunicorn instead, for
+# autoreload + a periodic worker restart — that's the one thing here that
+# isn't vendored, so it needs its own install:
+#   pip install gunicorn
