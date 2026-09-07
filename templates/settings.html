@@ -1,0 +1,97 @@
+%rebase('layout', title='Settings')
+<div class="page-header"><h1>Settings</h1></div>
+
+<section>
+  <h2>Appearance</h2>
+  <div class="setting-row">
+    <div>
+      <div class="setting-name">Theme</div>
+      <div class="setting-desc">Choose how the app looks on this device.</div>
+    </div>
+    <div class="theme-toggle" role="radiogroup" aria-label="Theme" data-theme-toggle>
+      <button type="button" class="theme-option" role="radio" data-theme-value="dark">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"/></svg>
+        Dark
+      </button>
+      <button type="button" class="theme-option" role="radio" data-theme-value="light">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="5"/><line x1="12" y1="1" x2="12" y2="3"/><line x1="12" y1="21" x2="12" y2="23"/><line x1="4.22" y1="4.22" x2="5.64" y2="5.64"/><line x1="18.36" y1="18.36" x2="19.78" y2="19.78"/><line x1="1" y1="12" x2="3" y2="12"/><line x1="21" y1="12" x2="23" y2="12"/><line x1="4.22" y1="19.78" x2="5.64" y2="18.36"/><line x1="18.36" y1="5.64" x2="19.78" y2="4.22"/></svg>
+        Light
+      </button>
+    </div>
+  </div>
+</section>
+
+<section>
+  <details id="change-password">
+    <summary>Change password</summary>
+    <form method="post" action="{{url_for('settings_password')}}" class="card-form">
+      <input type="hidden" name="_csrf_token" value="{{csrf_token()}}">
+      <div class="field"><label>Current password</label><input type="password" name="current_password" required></div>
+      <div class="field"><label>New password</label><input type="password" name="new_password" minlength="8" required></div>
+      <button class="btn btn-primary" type="submit">Update password</button>
+    </form>
+  </details>
+  <hr class="details-hr">
+</section>
+
+<section>
+  <h2>Team</h2>
+  %can_invite = member and member.role in ('owner', 'admin')
+  <div class="{{'detail-cols' if can_invite else ''}}">
+    <div>
+      <table class="data-table">
+        <thead><tr><th>Name</th><th>Email</th><th>Role</th></tr></thead>
+        <tbody>
+          %for row in team:
+            <tr><td>{{row['user'].name}}</td><td>{{row['user'].email}}</td><td><span class="badge">{{row['member'].role}}</span></td></tr>
+          %end
+        </tbody>
+      </table>
+    </div>
+
+    %if can_invite:
+      <div>
+        <h3>Invite a teammate</h3>
+        <form method="post" action="{{url_for('invite_teammate')}}" class="inline-form">
+          <input type="hidden" name="_csrf_token" value="{{csrf_token()}}">
+          <input type="email" name="email" placeholder="Email" required>
+          <button class="btn" type="submit">Send invite</button>
+        </form>
+        %if pending_invites:
+          <p class="muted">Pending invites: {{', '.join(i.email for i in pending_invites)}}</p>
+        %end
+      </div>
+    %end
+  </div>
+</section>
+
+<script>
+  // Theme preference is client-only (localStorage 'binders-core:theme');
+  // layout.html's <head> script applies it to <html> before first paint —
+  // see that file for why "the color-scheme actually in effect" (not a
+  // separate data-theme attribute) is the single source of truth here.
+  // This just reflects the current choice and lets it be switched live.
+  (() => {
+    const group = document.querySelector('[data-theme-toggle]');
+    if (!group) return;
+    const KEY = 'binders-core:theme';
+    const options = [...group.querySelectorAll('[data-theme-value]')];
+
+    const current = () => document.documentElement.style.colorScheme || 'dark';
+    const reflect = () => {
+      const t = current();
+      options.forEach(o => o.setAttribute('aria-checked', String(o.dataset.themeValue === t)));
+    };
+
+    const apply = (t) => {
+      const root = document.documentElement;
+      root.style.colorScheme = t;
+      root.style.background = (t === 'light') ? '#f7f7f8' : '#0a0a0b';
+      try { localStorage.setItem(KEY, t); } catch (e) {}
+      reflect();
+    };
+
+    options.forEach(o => o.addEventListener('click', () => apply(o.dataset.themeValue)));
+    reflect();
+  })();
+</script>

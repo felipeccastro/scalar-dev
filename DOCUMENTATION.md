@@ -163,9 +163,14 @@ happens; everything else (comments, descriptions, notes) is plain text.
   [Interface & behavior](#interface--behavior) for how it's implemented.
 - **Change password** (or **Set a password**, if the account somehow has
   none — the form always asks for the current password since there's no
-  alternate sign-in method here to fall back on).
+  alternate sign-in method here to fall back on) — collapsed behind a
+  `<details>`/`<summary>` disclosure. A failed or successful submit
+  redirects to `#change-password` so the disclosure re-opens instead of
+  hiding its own result.
 - **Team** — every member's name/email/role, plus (owner/admin only) an
-  invite form and a list of pending invite emails.
+  invite form and a list of pending invite emails, laid out side by side
+  (same `.detail-cols` two-column grid as the client/task detail pages;
+  stacks on narrow screens).
 
 ## Navigation & keyboard
 

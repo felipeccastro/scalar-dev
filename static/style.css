@@ -387,6 +387,8 @@ h3 { font-size: var(--text-6); font-weight: 600; }
 .card-form { flex-direction: column; align-items: stretch; max-width: 32rem; }
 .card-form .field { margin-bottom: 0; }
 
+.details-hr { margin: var(--space-3) 0 var(--space-4); }
+
 /* New Client/New Task dialogs — oat.css already themes the bare <dialog>
    element as a centered modal card with a dimmed backdrop (see
    vendor/oat.min.css); these just add the head/body/foot chrome inside
