@@ -374,6 +374,62 @@ h3 { font-size: var(--text-6); font-weight: 600; }
 .field-label-row { display: flex; justify-content: space-between; align-items: baseline; }
 .auth-link { font-size: var(--text-8); }
 
+/* ── Error pages (404/403/500) ─────────────────────────────
+   Shared by error.html, rendered either inside .auth-shell (signed out —
+   already centered by that shell) or inline in .main (signed in — just a
+   quiet, well-spaced card near the top of the content column). Kept
+   deliberately simple: no icon library, no JS, on the theory that the
+   page most likely to render right after something already broke
+   shouldn't lean on anything else that could fail with it. */
+
+.error-page {
+  width: 100%;
+  max-width: 28rem;
+  margin: var(--space-10) auto;
+  background: var(--card);
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  padding: var(--space-8);
+  box-shadow: var(--shadow-card);
+  position: relative;
+  z-index: 1;
+}
+
+.error-page h1 { margin-top: 0; font-size: 1.25rem; letter-spacing: -0.015em; }
+
+.error-top {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+  margin-bottom: var(--space-5);
+}
+
+.error-icon {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 2.5rem;
+  height: 2.5rem;
+  border-radius: 50%;
+  flex-shrink: 0;
+}
+.error-icon-404 { color: var(--muted-foreground); background: var(--muted); }
+.error-icon-403 { color: var(--warning); background: color-mix(in srgb, var(--warning), transparent 85%); }
+.error-icon-500 { color: var(--danger); background: color-mix(in srgb, var(--danger), transparent 85%); }
+
+/* The status code as a little log-line/exit-code stamp, in the same
+   monospace face oat.css already uses for <code>/<pre> — the one place
+   this page departs from plain prose, and only by reusing a face this
+   app's design system already has a role for. */
+.error-tag {
+  font-family: var(--font-mono);
+  font-size: var(--text-8);
+  color: var(--muted-foreground);
+  letter-spacing: 0.02em;
+}
+
+.error-actions { display: flex; flex-wrap: wrap; gap: var(--space-3); margin-top: var(--space-5); }
+
 /* ── Forms ──────────────────────────────────────────────── */
 
 .card-form, .inline-form {

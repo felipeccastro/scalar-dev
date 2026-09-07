@@ -1,0 +1,30 @@
+%rebase('layout', title=str(code))
+<div class="error-page">
+  <div class="error-top">
+    <span class="error-icon error-icon-{{code}}">
+      %if code == 404:
+        <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"/><path d="M14.8 9.2l-2.1 4.6-4.6 2.1 2.1-4.6z"/></svg>
+      %elif code == 403:
+        <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><rect x="5" y="11" width="14" height="9" rx="2"/><path d="M8 11V8a4 4 0 0 1 8 0v3"/></svg>
+      %else:
+        <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><path d="M10.29 3.86 1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L14.71 3.86a2 2 0 0 0-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>
+      %end
+    </span>
+    <span class="error-tag">ERR_{{code}}</span>
+  </div>
+  <h1>{{heading}}</h1>
+  <p class="muted">{{message}}</p>
+  <hr class="details-hr">
+  <div class="error-actions">
+    <!-- "button" (oat's own class) is what actually gives an <a> the
+         base button look (background/color/padding) — oat only wires
+         that up for a.button, not this app's a.btn; .btn/.btn-primary
+         alone just add the Linear-style weight/radius/gradient on top,
+         same as everywhere else in this app that used a real <button>
+         instead and never needed to know that. -->
+    <a class="button btn btn-primary" href="/">Go home</a>
+    %if code == 500:
+      <a class="button btn" href="{{request.path}}">Try again</a>
+    %end
+  </div>
+</div>

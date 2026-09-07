@@ -16,6 +16,7 @@ page. Keep it in sync with the code — see [AGENTS.md](AGENTS.md).
 - [Notifications](#notifications)
 - [Ask AI (chat assistant)](#ask-ai-chat-assistant)
 - [Settings & appearance](#settings--appearance)
+- [Error pages](#error-pages)
 - [Navigation & keyboard](#navigation--keyboard)
 - [Email](#email)
 - [Interface & behavior](#interface--behavior)
@@ -171,6 +172,21 @@ happens; everything else (comments, descriptions, notes) is plain text.
   invite form and a list of pending invite emails, laid out side by side
   (same `.detail-cols` two-column grid as the client/task detail pages;
   stacks on narrow screens).
+
+## Error pages
+
+`app.py`'s 404/403/500 handlers all render the same `error.html`, styled as
+a small card (icon + monospace `ERR_<code>` tag, heading, message, a
+divider, then actions) instead of a bare heading and link. The icon and its
+tinted badge vary by code — a compass for 404, a padlock for 403, an alert
+triangle for 500 — reusing this app's existing status-color tokens
+(muted/warning/danger) rather than introducing new colors. A **Go home**
+button is always shown; 500 also gets a **Try again** button that reloads
+the same URL. Deliberately dependency-free (no icon library, no JS): the
+500 handler already rolls back the DB and guards the render itself against
+a second crash (see its comment in `app.py`), so the page most likely to
+render right after something broke shouldn't lean on anything else that
+could fail with it.
 
 ## Navigation & keyboard
 
