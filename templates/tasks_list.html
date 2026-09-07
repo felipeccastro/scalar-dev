@@ -1,0 +1,132 @@
+%rebase('layout', title='Tasks', back_url=url_for('dashboard'))
+<div class="page-header">
+  <h1>Tasks</h1>
+  <button type="button" class="btn btn-primary" commandfor="new-task-dialog" command="show-modal">+ New task</button>
+</div>
+
+<form method="get" action="{{url_for('tasks_list')}}" class="search-form">
+  <input type="search" name="q" value="{{q}}" placeholder="Search tasks…">
+  <button class="btn" type="submit">Search</button>
+  %if q:
+    <a class="btn-link" href="{{url_for('tasks_list')}}">Clear</a>
+  %end
+</form>
+
+<dialog id="new-task-dialog">
+  <div class="dialog-head">
+    <span class="dialog-title">New task</span>
+    <button type="button" class="dialog-close" commandfor="new-task-dialog" command="close" aria-label="Close">✕</button>
+  </div>
+  <form method="post" action="{{url_for('tasks_create')}}">
+    <input type="hidden" name="_csrf_token" value="{{csrf_token()}}">
+    <div class="dialog-body inline-form">
+      <input type="text" name="title" placeholder="Title" required autofocus>
+      <select name="client_id">
+        <option value="">No client</option>
+        %for c in clients:
+          <option value="{{c.id}}">{{c.name}}</option>
+        %end
+      </select>
+      <select name="assignee_id">
+        <option value="">Unassigned</option>
+        %for u in team_users:
+          <option value="{{u.id}}">{{u.name}}</option>
+        %end
+      </select>
+      <select name="status">
+        %for s in statuses:
+          <option value="{{s}}">{{status_label(s)}}</option>
+        %end
+      </select>
+      <textarea name="description" placeholder="Description"></textarea>
+    </div>
+    <div class="dialog-foot">
+      <button type="button" class="btn" commandfor="new-task-dialog" command="close">Cancel</button>
+      <button class="btn btn-primary" type="submit">Add task</button>
+    </div>
+  </form>
+</dialog>
+
+<div class="kanban">
+  %for s in statuses:
+    <div class="kanban-col">
+      <h3><span class="status-dot status-dot-{{s}}"></span>{{status_label(s)}} <span class="badge">{{len(grouped[s])}}</span></h3>
+      <div class="kanban-col-body" data-status="{{s}}">
+        %for t in grouped[s]:
+          <div class="kanban-card kanban-card-{{s}}" draggable="true" data-task-id="{{t.id}}">
+            <!-- draggable="false": links are natively draggable in most
+                 browsers, which would otherwise steal the drag gesture
+                 (as a URL drag) from the card div above it. -->
+            <a class="kanban-card-link" draggable="false" href="{{url_for('task_detail', task_id=t.id)}}">
+              <div class="kanban-card-title">{{t.title}}</div>
+              %if t.client_id:
+                <div class="kanban-card-meta">{{t.client.name}}</div>
+              %end
+              %if t.assignee_id:
+                <div class="kanban-card-meta">{{t.assignee.name}}</div>
+              %end
+            </a>
+          </div>
+        %end
+      </div>
+    </div>
+  %end
+</div>
+
+<!-- Drag a card onto another column to change its status. Plain HTML5
+     drag-and-drop (draggable + dragstart/dragover/drop), no library and no
+     new dependency — there's no declarative way to do this, so per
+     AGENTS.md this is a deliberate, single-purpose exception to "no
+     app-authored JS" (same reasoning as layout.html's Esc-listener). On
+     drop, it POSTs the dropped-on column's full new card order to
+     /tasks/reorder, which is the only thing that changes: status + board
+     position, nothing else about the task. -->
+<script>
+  (() => {
+    let dragged = null;
+
+    document.querySelectorAll('.kanban-card').forEach((card) => {
+      card.addEventListener('dragstart', () => {
+        dragged = card;
+        card.classList.add('dragging');
+      });
+      card.addEventListener('dragend', () => {
+        card.classList.remove('dragging');
+        dragged = null;
+      });
+    });
+
+    document.querySelectorAll('.kanban-col-body').forEach((col) => {
+      col.addEventListener('dragover', (e) => {
+        if (!dragged) return;
+        e.preventDefault();
+        const after = [...col.querySelectorAll('.kanban-card')].find((card) => {
+          if (card === dragged) return false;
+          const box = card.getBoundingClientRect();
+          return e.clientY < box.top + box.height / 2;
+        });
+        col.insertBefore(dragged, after || null);
+      });
+
+      col.addEventListener('drop', (e) => {
+        e.preventDefault();
+        if (!dragged) return;
+        const status = col.dataset.status;
+        dragged.className = `kanban-card kanban-card-${status}`;
+        const ids = [...col.querySelectorAll('.kanban-card')].map((c) => c.dataset.taskId);
+        document.querySelectorAll('.kanban-col-body').forEach((c) => {
+          const badge = c.closest('.kanban-col').querySelector('.badge');
+          if (badge) badge.textContent = c.children.length;
+        });
+        fetch('{{url_for("tasks_reorder")}}', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/x-www-form-urlencoded',
+            'X-CSRF-Token': '{{csrf_token()}}',
+          },
+          body: new URLSearchParams([['status', status], ...ids.map((id) => ['task_id', id])]),
+        }).then((r) => { if (!r.ok) location.reload(); }).catch(() => location.reload());
+      });
+    });
+  })();
+</script>

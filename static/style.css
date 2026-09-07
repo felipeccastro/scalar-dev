@@ -1,0 +1,881 @@
+/* App-specific chrome layered on top of vendor/oat.min.css, which already
+   provides base element styling (buttons, inputs, tables, links, headings)
+   from oat.css's own theme tokens (--space-*, --text-*, --border, etc.) —
+   this file only adds the sidebar/nav shell, page layout, and the handful
+   of components (kanban, chat, detail two-column layout) this app's small
+   page set actually needs. Trimmed from the admin app's much larger
+   style.css to what this simpler page set uses. */
+
+/* Cross-document view transitions between pages (Chromium-only for now;
+   no-op elsewhere). navigation: auto opts every same-origin navigation
+   in. The root crossfade is disabled below: Chrome's default blends
+   the old/new snapshots with mix-blend-mode: plus-lighter (additive),
+   which on a dark theme flashes white wherever the two snapshots don't
+   match exactly (layout shift, an image not loaded yet, ...). Without
+   a hand-authored per-element transition to replace it, an instant
+   swap looks better than that flash. */
+@view-transition {
+  navigation: auto;
+}
+
+::view-transition-old(root),
+::view-transition-new(root) {
+  animation: none;
+}
+
+/* Retheme oat's own default tokens (which default to a plain gray palette)
+   to match the admin app's Linear-inspired palette — same near-black/indigo
+   dark surfaces, just expressed as oat's token names instead of admin's own
+   (--page-bg/--indigo/etc.), since this app leans on oat's built-in element
+   styling (button, input, table) rather than hand-rolling its own the way
+   the admin app does.
+
+   Light mode reuses oat's own idiom for this rather than admin's — oat.css
+   defines its default tokens with light-dark(), which resolves off the
+   `color-scheme` value in effect wherever the variable's declared, not off
+   any extra attribute. So flipping `color-scheme` on :root (done by the
+   inline script in layout.html's <head>, from the Settings-page toggle's
+   saved preference) is all it takes for every color below to follow — no
+   parallel `:root[data-theme=light] { ... }` override block to keep in
+   sync, unlike admin's pre-light-dark() approach.
+
+   Not a flat inversion: --primary stays the same indigo in both (brand
+   color, not a surface), but --danger/--success/--warning get deepened for
+   light mode — the dark-mode values are pale (e.g. --success: #34d399, a
+   bright mint) meant to sit on a near-black page and read as bold accents;
+   at that same lightness on a white page they'd fail as text-ink contrast,
+   so light mode uses a deeper shade of each instead. Because of that, each
+   color's own -foreground pairing (light text over a solid fill of that
+   color, e.g. .btn-danger) has to flip alongside it, not stay constant. */
+:root {
+  color-scheme: dark;
+  --background:         light-dark(#f7f7f8, #0a0a0b);
+  --foreground:         light-dark(#18181b, #fafafa);
+  --card:               light-dark(#ffffff, #111113);
+  --card-foreground:    light-dark(#18181b, #fafafa);
+  --primary:            #4338ca;
+  --primary-hover:      #4f46e5;
+  --primary-foreground: #fafafa;
+  --secondary:          light-dark(#f0f0f2, #18181b);
+  --secondary-foreground: light-dark(#18181b, #fafafa);
+  --muted:              light-dark(#f0f0f2, #18181b);
+  --muted-foreground:   light-dark(#6b6b74, #a1a1aa);
+  --faint:              light-dark(#f7f7f8, #111113);
+  --faint-foreground:   light-dark(#6b6b74, #71717a);
+  --accent:             light-dark(#ececef, #27272a);
+  --danger:             light-dark(#dc2626, #f87171);
+  --danger-foreground:  light-dark(#fafafa, #18181b);
+  --success:            light-dark(#047857, #34d399);
+  --success-foreground: light-dark(#fafafa, #18181b);
+  --warning:            light-dark(#b45309, #fbbf24);
+  --warning-foreground: light-dark(#fafafa, #09090b);
+  --border:             light-dark(#e2e2e6, #27272a);
+  --input:              light-dark(#e2e2e6, #27272a);
+  --ring:               light-dark(#4338ca, #818cf8);
+  /* Lighter indigo for accents/links/focus states, distinct from the
+     deeper --primary used for solid button fills — same split the admin
+     app makes between --indigo and --indigo-bg. Dark mode wants the light
+     tint for contrast on near-black; light mode inverts that logic back
+     to a deeper indigo so it stays legible as text on white. */
+  --indigo-accent:      light-dark(#4f46e5, #818cf8);
+  /* box-shadow can't take light-dark() directly (it's a <color> function,
+     and box-shadow's value mixes color with lengths) — routed through two
+     intermediate color-only custom properties instead. */
+  --shadow-card-1: light-dark(rgba(0, 0, 0, 0.04), rgba(0, 0, 0, 0.3));
+  --shadow-card-2: light-dark(rgba(0, 0, 0, 0.10), rgba(0, 0, 0, 0.55));
+  --shadow-card: 0 1px 2px var(--shadow-card-1), 0 8px 24px -12px var(--shadow-card-2);
+}
+
+* { box-sizing: border-box; }
+
+html { color-scheme: dark; }
+
+body {
+  margin: 0;
+  font-size: 0.875rem;
+  -webkit-font-smoothing: antialiased;
+}
+
+.muted { color: var(--muted-foreground); font-size: var(--text-7); }
+
+h2 {
+  font-size: 0.6875rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.07em;
+  color: var(--muted-foreground);
+  margin: 0 0 var(--space-3);
+}
+
+h3 { font-size: var(--text-6); font-weight: 600; }
+
+@media (prefers-reduced-motion: reduce) {
+  * { animation-duration: 0.001ms !important; transition-duration: 0.001ms !important; }
+}
+
+/* ── Layout ─────────────────────────────────────────────── */
+
+.app {
+  display: grid;
+  grid-template-columns: 220px 1fr;
+  min-height: 100vh;
+}
+
+.main {
+  padding: var(--space-8) var(--space-10);
+  max-width: 1100px;
+}
+
+/* ── Sidebar ────────────────────────────────────────────── */
+
+/* Sticky + viewport-height so the sidebar (and .sidebar-foot's user/logout
+   row at its bottom) stays fully in view instead of stretching to match
+   .main's height and scrolling away with it on any page taller than the
+   viewport — .sidebar-nav's own overflow-y: auto absorbs a nav list that
+   ever outgrows the remaining space instead. */
+.sidebar {
+  background: var(--card);
+  border-right: 1px solid var(--border);
+  display: flex;
+  flex-direction: column;
+  position: sticky;
+  top: 0;
+  height: 100vh;
+}
+
+.sidebar-logo {
+  display: flex;
+  align-items: center;
+  gap: 0.625rem;
+  padding: 1rem 1.125rem;
+  font-weight: 700;
+  font-size: 0.9375rem;
+  letter-spacing: -0.02em;
+  border-bottom: 1px solid var(--border);
+}
+
+.logo-mark {
+  width: 26px;
+  height: 26px;
+  border-radius: 7px;
+  background: linear-gradient(160deg, var(--primary-hover), var(--primary) 70%);
+  color: var(--primary-foreground);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-weight: 800;
+  font-size: 0.75rem;
+  flex-shrink: 0;
+  box-shadow: 0 2px 8px -1px rgba(67, 56, 202, 0.55);
+}
+
+.ws-name { font-weight: var(--font-semibold); }
+
+/* Checkbox-hack mobile nav toggle — see layout.html. All of these are
+   invisible/inert above the mobile breakpoint (below); the checkbox itself
+   is never shown, only its <label for="nav-toggle"> triggers. */
+.nav-toggle { position: absolute; opacity: 0; pointer-events: none; }
+
+.hamburger-btn {
+  display: none;
+  align-items: center;
+  justify-content: center;
+  width: 2.25rem;
+  height: 2.25rem;
+  border-radius: var(--radius-medium);
+  background: var(--card);
+  border: 1px solid var(--border);
+  color: var(--foreground);
+  cursor: pointer;
+}
+
+.sidebar-close {
+  display: none;
+  margin-left: auto;
+  color: var(--muted-foreground);
+  cursor: pointer;
+}
+
+.sidebar-backdrop { display: none; }
+
+.sidebar-nav {
+  display: flex;
+  flex-direction: column;
+  gap: 0.125rem;
+  flex: 1;
+  padding: 0.625rem;
+  overflow-y: auto;
+}
+
+.nav-link {
+  position: relative;
+  display: flex;
+  align-items: center;
+  gap: 0.625rem;
+  padding: 0.4375rem 0.625rem 0.4375rem 0.75rem;
+  border-radius: 7px;
+  color: var(--muted-foreground);
+  text-decoration: none;
+  font-size: 0.8125rem;
+  transition: background 0.12s, color 0.12s;
+}
+
+.nav-icon { flex-shrink: 0; opacity: 0.85; }
+
+.nav-link:hover { background: var(--accent); color: var(--foreground); }
+.nav-link:hover .nav-icon { opacity: 1; }
+
+.nav-link.active {
+  background: var(--accent);
+  color: var(--foreground);
+  font-weight: 500;
+}
+.nav-link.active .nav-icon { opacity: 1; color: var(--indigo-accent); }
+.nav-link.active::before {
+  content: "";
+  position: absolute;
+  left: 0;
+  top: 0.25rem;
+  bottom: 0.25rem;
+  width: 2.5px;
+  border-radius: 2px;
+  background: var(--indigo-accent);
+}
+
+.sidebar-foot {
+  border-top: 1px solid var(--border);
+  padding: 0.625rem 0.75rem;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-2);
+}
+
+.sidebar-user {
+  font-size: var(--text-7);
+  font-weight: var(--font-medium);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.icon-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 26px;
+  height: 26px;
+  flex-shrink: 0;
+  padding: 0 !important;
+  background: transparent !important;
+  color: var(--muted-foreground);
+  border: none !important;
+}
+.icon-btn:hover { background: var(--accent) !important; color: var(--foreground); }
+
+/* ── Page header ────────────────────────────────────────── */
+
+.page-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-4);
+  padding: 1.25rem 0 1rem;
+  margin-bottom: var(--space-6);
+  border-bottom: 1px solid var(--border);
+  position: relative;
+}
+
+.page-header::after {
+  content: "";
+  position: absolute;
+  left: 0;
+  bottom: -1px;
+  width: 5rem;
+  height: 1px;
+  background: var(--indigo-accent);
+}
+
+.page-header h1 {
+  font-size: 1.1875rem;
+  font-weight: 650;
+  letter-spacing: -0.015em;
+  margin: 0;
+}
+
+.page-header-back {
+  display: block;
+  font-size: var(--text-8);
+  color: var(--muted-foreground);
+  text-decoration: none;
+  margin-bottom: var(--space-1);
+  transition: color 0.12s;
+}
+.page-header-back:hover { color: var(--foreground); }
+
+/* ── Auth pages ─────────────────────────────────────────── */
+
+.auth-shell {
+  min-height: 100vh;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: var(--space-6);
+  position: relative;
+  overflow: hidden;
+}
+
+/* Soft ambient glow behind the card — the one deliberate atmospheric touch
+   on an otherwise flat, near-black palette. Radial + low opacity so it
+   reads as depth rather than decoration, and costs nothing structurally. */
+.auth-shell::before {
+  content: "";
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  width: 46rem;
+  height: 46rem;
+  transform: translate(-50%, -50%);
+  background: radial-gradient(circle, color-mix(in srgb, var(--primary), transparent 78%), transparent 65%);
+  pointer-events: none;
+  z-index: 0;
+}
+
+.auth-brand {
+  display: flex;
+  align-items: center;
+  gap: 0.625rem;
+  margin-bottom: var(--space-8);
+  font-weight: 700;
+  font-size: 1rem;
+  letter-spacing: -0.02em;
+  position: relative;
+  z-index: 1;
+}
+
+.auth-card {
+  width: 100%;
+  max-width: 26rem;
+  background: var(--card);
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  padding: var(--space-8);
+  box-shadow: var(--shadow-card);
+  position: relative;
+  z-index: 1;
+}
+
+.auth-card h1 { margin-top: 0; font-size: 1.25rem; letter-spacing: -0.015em; }
+
+.field { margin-bottom: var(--space-4); display: flex; flex-direction: column; gap: var(--space-1); }
+.field label { font-size: var(--text-8); font-weight: var(--font-medium); }
+
+.field-label-row { display: flex; justify-content: space-between; align-items: baseline; }
+.auth-link { font-size: var(--text-8); }
+
+/* ── Forms ──────────────────────────────────────────────── */
+
+.card-form, .inline-form {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-3);
+  align-items: flex-start;
+  margin-bottom: var(--space-6);
+}
+
+.card-form { flex-direction: column; align-items: stretch; max-width: 32rem; }
+.card-form .field { margin-bottom: 0; }
+
+/* New Client/New Task dialogs — oat.css already themes the bare <dialog>
+   element as a centered modal card with a dimmed backdrop (see
+   vendor/oat.min.css); these just add the head/body/foot chrome inside
+   it. Reuses .inline-form for the field layout, so it's the same
+   flex-wrap row of fields as before, just inside a dialog instead of an
+   inline accordion — hence the margin-bottom reset (.dialog-foot's own
+   padding provides that spacing instead). */
+.dialog-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: var(--space-4) var(--space-5);
+  border-bottom: 1px solid var(--border);
+}
+
+.dialog-title {
+  font-size: var(--text-6);
+  font-weight: var(--font-semibold);
+}
+
+.dialog-close {
+  background: none;
+  border: none;
+  cursor: pointer;
+  color: var(--muted-foreground);
+  padding: var(--space-1);
+  border-radius: var(--radius-small);
+  line-height: 1;
+}
+.dialog-close:hover { color: var(--foreground); }
+
+.dialog-body { padding: var(--space-5); }
+.dialog-body.inline-form { margin-bottom: 0; }
+
+.dialog-foot {
+  display: flex;
+  justify-content: flex-end;
+  gap: var(--space-3);
+  padding: var(--space-4) var(--space-5);
+  border-top: 1px solid var(--border);
+}
+
+.search-form {
+  display: flex;
+  gap: var(--space-2);
+  align-items: center;
+  margin-bottom: var(--space-4);
+}
+.search-form input[type="search"] { max-width: 20rem; }
+
+.pre-wrap-input { font-family: inherit; }
+.pre-wrap { white-space: pre-wrap; }
+
+/* ── Buttons (oat styles the bare <button>/[type=submit] element already —
+   these add the Linear-style weight/radius/transition on top, and the two
+   named variants oat doesn't know about). ── */
+
+button, [type="submit"], [type="button"], a.btn {
+  border-radius: 8px !important;
+  font-weight: 500 !important;
+  transition: background 0.12s, border-color 0.12s, opacity 0.12s, box-shadow 0.12s, transform 0.12s;
+}
+
+/* Scoped to real buttons/links carrying .btn-primary — NOT a bare class
+   selector, so it can't get beaten by !important on .btn-danger submit
+   buttons (archive/delete use [type=submit] too). */
+button.btn-primary, a.btn.btn-primary, [type="submit"].btn-primary {
+  font-weight: 600 !important;
+  background: linear-gradient(160deg, var(--primary-hover), var(--primary) 75%) !important;
+  border-color: transparent !important;
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.4), 0 0 0 1px color-mix(in srgb, var(--primary), transparent 40%);
+}
+button.btn-primary:hover, a.btn.btn-primary:hover, [type="submit"].btn-primary:hover {
+  box-shadow: 0 4px 14px -2px color-mix(in srgb, var(--primary-hover), transparent 30%);
+  transform: translateY(-1px);
+}
+button.btn-primary:active, a.btn.btn-primary:active, [type="submit"].btn-primary:active { transform: translateY(0); }
+
+.btn-danger { background: var(--danger); color: var(--danger-foreground); border-color: transparent; }
+.btn-danger:hover { opacity: 0.88; }
+
+.btn-link {
+  background: none;
+  border: none;
+  color: var(--muted-foreground);
+  text-decoration: underline;
+  padding: 0;
+  font-size: var(--text-8);
+}
+.btn-link:hover { color: var(--foreground); }
+
+/* ── Badges & status dots ───────────────────────────────────
+   One shared neutral pill; the status itself is carried by the dot +
+   text color (currentColor), not by the pill background — same visual
+   grammar GitHub/Linear use for status, and it means a status only ever
+   needs one color decision instead of a background+foreground pair. */
+
+.badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35em;
+  font-size: 0.6875rem;
+  font-weight: 500;
+  padding: 0.2rem 0.55rem;
+  border-radius: 9999px;
+  white-space: nowrap;
+  background: var(--accent);
+  color: var(--muted-foreground);
+  font-variant-numeric: tabular-nums;
+}
+
+.badge .dot {
+  width: 5px;
+  height: 5px;
+  border-radius: 50%;
+  background: currentColor;
+  flex-shrink: 0;
+}
+
+.badge-lead, .badge-todo { color: var(--muted-foreground); }
+.badge-active, .badge-in_progress { color: var(--warning); }
+.badge-done { color: var(--success); }
+.badge-inactive { color: var(--faint-foreground); }
+
+.status-dot {
+  display: inline-block;
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  background: var(--muted-foreground);
+  margin-right: 0.4rem;
+}
+.status-dot-lead, .status-dot-todo { background: var(--muted-foreground); }
+.status-dot-active, .status-dot-in_progress { background: var(--warning); }
+.status-dot-done { background: var(--success); }
+.status-dot-inactive { background: var(--faint-foreground); }
+
+/* ── Data table ─────────────────────────────────────────── */
+
+.data-table {
+  width: 100%;
+  border-collapse: collapse;
+  background: var(--card);
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  overflow: hidden;
+  box-shadow: var(--shadow-card);
+}
+.data-table th {
+  text-align: left;
+  font-size: 0.6875rem;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: var(--muted-foreground);
+  font-weight: 600;
+  border-bottom: 1px solid var(--border);
+  padding: 0.625rem 0.875rem;
+}
+.data-table td {
+  padding: 0.75rem 0.875rem;
+  border-bottom: 1px solid var(--border);
+  font-size: 0.8125rem;
+}
+.data-table tbody tr { cursor: pointer; transition: background 0.1s; }
+.data-table tbody tr:last-child td { border-bottom: none; }
+.data-table tbody tr:hover { background: var(--accent); }
+.data-table td.muted { text-align: center; padding: 2.5rem 0.875rem; cursor: default; }
+
+/* ── Kanban / board ─────────────────────────────────────── */
+
+.kanban {
+  display: grid;
+  grid-auto-flow: column;
+  grid-auto-columns: minmax(240px, 1fr);
+  gap: 0.875rem;
+  align-items: start;
+}
+
+.kanban-col {
+  background: var(--card);
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  padding: 0.75rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.4375rem;
+}
+
+.kanban-col h3 {
+  margin: 0 0 0.625rem;
+  padding: 0 0.25rem;
+  font-size: 0.75rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  color: var(--muted-foreground);
+  display: flex;
+  align-items: center;
+  gap: 0.4375rem;
+}
+
+.kanban-col-body {
+  display: flex;
+  flex-direction: column;
+  gap: 0.4375rem;
+  min-height: 2.5rem; /* stay a droppable target even when the column is empty */
+}
+
+.kanban-card {
+  display: block;
+  background: var(--faint);
+  border: 1px solid var(--border);
+  border-left: 3px solid var(--border);
+  border-radius: 8px;
+  padding: 0.6875rem 0.75rem;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.3);
+  cursor: grab;
+  transition: border-color 0.15s, transform 0.12s, box-shadow 0.15s;
+}
+.kanban-card:hover { border-color: var(--ring); transform: translateY(-1px); box-shadow: 0 4px 12px -4px rgba(0, 0, 0, 0.5); }
+.kanban-card.dragging { opacity: 0.4; }
+
+.kanban-card-link { display: block; text-decoration: none; color: var(--foreground); }
+
+.kanban-card-lead, .kanban-card-todo { border-left-color: var(--muted-foreground); }
+.kanban-card-active, .kanban-card-in_progress { border-left-color: var(--warning); }
+.kanban-card-done { border-left-color: var(--success); }
+.kanban-card-inactive { border-left-color: var(--faint-foreground); }
+
+.kanban-card-title { font-weight: 500; font-size: 0.875rem; margin-bottom: 0.25rem; }
+.kanban-card-meta { font-size: 0.75rem; color: var(--muted-foreground); }
+
+/* ── Dashboard ──────────────────────────────────────────── */
+
+.dash-stats {
+  display: flex;
+  gap: var(--space-4);
+  margin-bottom: var(--space-8);
+}
+
+.dash-stat {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  gap: var(--space-4);
+  background: var(--card);
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  padding: var(--space-4) var(--space-6);
+  min-width: 140px;
+  box-shadow: var(--shadow-card);
+  transition: transform 0.12s, border-color 0.12s;
+}
+.dash-stat:hover { transform: translateY(-1px); border-color: color-mix(in srgb, var(--indigo-accent), var(--border) 60%); }
+
+.dash-stat-icon {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 36px;
+  height: 36px;
+  border-radius: 9px;
+  background: var(--accent);
+  color: var(--indigo-accent);
+  flex-shrink: 0;
+}
+
+.dash-stat-num { font-size: 1.75rem; font-weight: 700; letter-spacing: -0.02em; font-variant-numeric: tabular-nums; line-height: 1; }
+.dash-stat-label { color: var(--muted-foreground); font-size: var(--text-8); margin-top: 0.2rem; }
+
+.dash-cols { display: grid; grid-template-columns: 1fr 1fr; gap: var(--space-8); }
+
+.dash-col .plain-list a { font-weight: 500; }
+
+/* ── Detail pages (client / task) ──────────────────────────*/
+
+.detail-cols {
+  display: grid;
+  grid-template-columns: 2fr 1fr;
+  gap: var(--space-8);
+  align-items: start;
+}
+
+.detail-side { position: sticky; top: var(--space-6); }
+
+/* ── Comments / activity ───────────────────────────────────*/
+
+.avatar {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 20px;
+  height: 20px;
+  border-radius: 50%;
+  background: var(--accent);
+  color: var(--indigo-accent);
+  font-size: 0.625rem;
+  font-weight: 700;
+  flex-shrink: 0;
+  margin-right: 0.4rem;
+  vertical-align: -4px;
+}
+
+.comment {
+  border: 1px solid var(--border);
+  background: var(--card);
+  border-radius: 8px;
+  padding: var(--space-3);
+  margin-bottom: var(--space-3);
+}
+.comment-meta { font-size: var(--text-8); color: var(--muted-foreground); margin-bottom: var(--space-1); display: flex; align-items: center; }
+
+.activity-list { list-style: none; padding: 0; font-size: var(--text-8); color: var(--muted-foreground); }
+.activity-list li { padding: var(--space-1) 0; border-bottom: 1px solid var(--border); }
+.activity-verb { color: var(--foreground); font-weight: var(--font-medium); }
+
+.plain-list { list-style: none; padding: 0; }
+.plain-list li { padding: var(--space-2) 0; border-bottom: 1px solid var(--border); display: flex; align-items: center; gap: var(--space-2); }
+.plain-list li.is-unread { font-weight: var(--font-medium); }
+.plain-list li.is-unread::before { content: ""; width: 6px; height: 6px; border-radius: 50%; background: var(--indigo-accent); flex-shrink: 0; }
+
+/* ── Empty states ───────────────────────────────────────── */
+
+.dash-col p.muted,
+.chat-log p.muted {
+  border: 1px dashed var(--border);
+  border-radius: 10px;
+  padding: var(--space-6);
+  text-align: center;
+  margin: 0;
+}
+
+/* ── Ask AI chat ────────────────────────────────────────── */
+
+/* Fill the viewport (minus .main's own vertical padding) so the log is
+   the only thing that scrolls, instead of guessing its height in vh —
+   a vh guess either clips the input off-screen or leaves a mostly-empty
+   box, depending on how much other content (backend notice, pending
+   banner) shares the page with it. .page-header/notice/pending/form
+   size to content as normal flex items; .chat-log is the one flexible
+   item and absorbs whatever space is left. */
+.chat-page {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-6);
+  height: calc(100vh - (var(--space-8) * 2));
+  min-height: 0;
+}
+.chat-page .page-header { margin-bottom: 0; }
+
+.chat-log {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-4);
+  flex: 1 1 auto;
+  min-height: 0;
+  overflow-y: auto;
+}
+
+.chat-msg {
+  padding: var(--space-3) var(--space-4);
+  border-radius: var(--radius-medium);
+  max-width: 40rem;
+}
+
+.chat-msg-user {
+  align-self: flex-end;
+  background: linear-gradient(160deg, var(--primary-hover), var(--primary) 75%);
+  color: var(--primary-foreground);
+  white-space: pre-wrap;
+}
+
+.chat-msg-assistant {
+  align-self: flex-start;
+  background: var(--faint);
+  border: 1px solid var(--border);
+}
+.chat-msg-assistant p:last-child { margin-bottom: 0; }
+
+.chat-form { flex-shrink: 0; }
+.chat-form input[type="text"] { flex: 1; }
+
+.chat-pending {
+  flex-shrink: 0;
+  padding: var(--space-4);
+  border-radius: var(--radius-medium);
+  background: var(--faint);
+  border: 1px solid var(--border);
+}
+.chat-pending p { margin: 0 0 var(--space-2); }
+.chat-pending-actions { display: flex; gap: var(--space-3); }
+
+/* ── Settings ───────────────────────────────────────────── */
+
+.setting-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-4);
+  /* Sections get their gap from the last element's own margin-bottom, not
+     from any spacing on <section> itself (see h2's own margin: 0 0
+     var(--space-3) — no top margin) — match .card-form/.inline-form's. */
+  margin-bottom: var(--space-6);
+}
+
+.setting-name { font-weight: var(--font-medium); }
+.setting-desc { font-size: var(--text-8); color: var(--muted-foreground); margin-top: var(--space-1); }
+
+.theme-toggle {
+  display: inline-flex;
+  background: var(--background);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  padding: 3px;
+  gap: 3px;
+  flex-shrink: 0;
+}
+
+.theme-option {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.375rem;
+  background: none;
+  border: none;
+  color: var(--muted-foreground);
+  padding: 0.375rem 0.75rem;
+  border-radius: 6px;
+  cursor: pointer;
+  font-size: var(--text-8);
+  font-weight: 500;
+  transition: background 0.12s, color 0.12s;
+}
+
+.theme-option:hover { color: var(--foreground); }
+
+.theme-option[aria-checked="true"] {
+  background: var(--accent);
+  color: var(--foreground);
+}
+
+.theme-option svg { opacity: 0.7; }
+.theme-option[aria-checked="true"] svg { opacity: 1; }
+
+/* ── Billing ────────────────────────────────────────────── */
+
+.billing-card {
+  background: var(--card);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-medium);
+  padding: var(--space-8);
+  max-width: 32rem;
+}
+
+/* ── Responsive ─────────────────────────────────────────── */
+
+@media (max-width: 860px) {
+  .app { grid-template-columns: 1fr; }
+
+  /* Off-canvas sidebar instead of the old horizontal top menu: hidden past
+     the left edge by default, slid in over the content when the hamburger
+     (a <label for="nav-toggle">) is tapped. */
+  .hamburger-btn {
+    display: flex;
+    position: fixed;
+    top: var(--space-3);
+    left: var(--space-3);
+    z-index: 50;
+  }
+  .sidebar-close { display: block; }
+  .sidebar {
+    position: fixed;
+    inset: 0 auto 0 0;
+    width: 240px;
+    z-index: 40;
+    transform: translateX(-100%);
+    transition: transform 0.2s ease;
+  }
+  .nav-toggle:checked ~ .sidebar { transform: translateX(0); }
+  .nav-toggle:checked ~ .sidebar-backdrop {
+    display: block;
+    position: fixed;
+    inset: 0;
+    background: rgba(0, 0, 0, 0.5);
+    z-index: 30;
+  }
+  .main { padding-top: calc(var(--space-8) + 2.75rem); }
+  .chat-page { height: calc(100vh - (var(--space-8) * 2) - 2.75rem); }
+
+  .detail-cols, .dash-cols { grid-template-columns: 1fr; }
+  .detail-side { position: static; }
+  .dash-stats { flex-wrap: wrap; }
+}
