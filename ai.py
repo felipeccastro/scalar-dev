@@ -25,6 +25,7 @@ import json
 import os
 import re
 import ssl
+import time
 import urllib.error
 import urllib.request
 from typing import Any
@@ -645,26 +646,48 @@ def _build_messages(thread: ChatThread, user_text: str) -> list[dict]:
     return messages
 
 
+_RATE_LIMIT_MAX_RETRIES = 3
+_RATE_LIMIT_BASE_DELAY = 0.5  # seconds; doubles each retry (0.5, 1, 2)
+
+
 def _http_json(url: str, *, payload: dict, headers: dict[str, str] | None = None) -> dict:
     body = json.dumps(payload).encode("utf-8")
     hdrs = {"Content-Type": "application/json"}
     if headers:
         hdrs.update(headers)
     req = urllib.request.Request(url, data=body, headers=hdrs, method="POST")
-    try:
-        with urllib.request.urlopen(req, timeout=REQUEST_TIMEOUT, context=_SSL_CTX) as r:
-            return json.loads(r.read())
-    except urllib.error.HTTPError as e:
-        err_body = ""
+    delay = _RATE_LIMIT_BASE_DELAY
+    for attempt in range(_RATE_LIMIT_MAX_RETRIES + 1):
         try:
-            err_body = e.read().decode("utf-8", errors="replace")
-        except Exception:
-            pass
-        raise LLMError(f"HTTP {e.code}: {err_body[:400] or e.reason}")
-    except urllib.error.URLError as e:
-        raise LLMError(f"Network error reaching {url}: {e.reason}")
-    except (OSError, json.JSONDecodeError) as e:
-        raise LLMError(f"LLM error: {e}")
+            with urllib.request.urlopen(req, timeout=REQUEST_TIMEOUT, context=_SSL_CTX) as r:
+                return json.loads(r.read())
+        except urllib.error.HTTPError as e:
+            # 429 (tokens-per-minute) is shared across every app using the same
+            # OPENAI_API_KEY (admin and every provisioned instance share one), so
+            # a burst across apps can trip it even for a single small request.
+            # OpenAI's own response names a sub-second retry-after; a few short,
+            # doubling waits clear it without the user ever seeing it. Only once
+            # retries are exhausted does this surface a clean message instead of
+            # the raw JSON error body.
+            if e.code == 429 and attempt < _RATE_LIMIT_MAX_RETRIES:
+                time.sleep(delay)
+                delay *= 2
+                continue
+            if e.code == 429:
+                raise LLMError(
+                    "The AI provider is rate-limited right now (this quota is shared across every "
+                    "app using the same API key) — please try again in a moment."
+                )
+            err_body = ""
+            try:
+                err_body = e.read().decode("utf-8", errors="replace")
+            except Exception:
+                pass
+            raise LLMError(f"HTTP {e.code}: {err_body[:400] or e.reason}")
+        except urllib.error.URLError as e:
+            raise LLMError(f"Network error reaching {url}: {e.reason}")
+        except (OSError, json.JSONDecodeError) as e:
+            raise LLMError(f"LLM error: {e}")
 
 
 def _parse_tool_args(raw: Any) -> dict:

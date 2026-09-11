@@ -148,16 +148,46 @@ def csrf_token() -> str:
     return token
 
 
+# Routes authenticated independently of the session (see
+# require_internal_secret) have no session-seeded CSRF token to present, so
+# csrf_protect() skips them by path. Checked by path rather than a
+# decorator-set marker on the route's callback because Bottle's
+# before_request hooks fire *before* routing — request.route isn't
+# resolved yet at this point, so there's no callback to inspect here.
+_CSRF_EXEMPT_PATHS = frozenset({"/internal/ai-command"})
+
+
 def csrf_protect() -> None:
-    """Registered as a before_request hook. This app has no webhook-style
-    endpoints that authenticate themselves independently of the session, so
-    every mutating request is checked uniformly (no per-route exemption)."""
+    """Registered as a before_request hook. Every mutating request is
+    checked uniformly, except the paths in _CSRF_EXEMPT_PATHS — today just
+    the admin app's internal Ask-AI proxy endpoint, which authenticates
+    itself via a shared secret instead of a session."""
     if request.method in ("GET", "HEAD", "OPTIONS"):
+        return
+    if request.path in _CSRF_EXEMPT_PATHS:
         return
     expected = csrf_token()
     supplied = request.forms.get("_csrf_token") or request.headers.get("X-CSRF-Token") or ""
     if not hmac.compare_digest(expected, supplied):
         abort(400, "Your session expired or the form was out of date — please try again.")
+
+
+def require_internal_secret(view: Callable) -> Callable:
+    """Decorator for internal-only routes authenticated by a shared secret
+    (this instance's own SECRET_KEY, set in its .env at provision time)
+    instead of a session or login. The only caller is the admin app's own
+    Ask AI, reaching this over localhost to run a natural-language instruction
+    through this app's own chat tools — see pages.py's /internal/ai-command."""
+
+    @functools.wraps(view)
+    def wrapper(*args: Any, **kwargs: Any):
+        expected = os.environ.get("SECRET_KEY", "")
+        supplied = request.headers.get("X-Internal-Secret") or ""
+        if not expected or not hmac.compare_digest(expected, supplied):
+            abort(403, "Not authorized.")
+        return view(*args, **kwargs)
+
+    return wrapper
 
 
 # ---------------------------------------------------------------------------

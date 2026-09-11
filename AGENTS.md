@@ -19,6 +19,27 @@ incomplete, the same way you'd treat it as incomplete without the code.
 - If you're unsure whether something is user-visible enough to document,
   document it — a stale README is worse than a slightly over-eager one.
 
+## Keep Ask AI in sync with the app
+
+**Any new record type, field, or mutation added to the UI should get a
+matching tool in `ai.py`, in the same change** — a create/update(/archive)
+tool mirroring the new `pages.py` route's fields and validation exactly, a
+`TOOLS_SCHEMA` entry, a `_DISPATCH` entry, and (if it mutates anything) a
+`_MUTATING_TOOLS` entry plus a `_describe_tool_call` branch for the
+confirmation banner. `SYSTEM_PROMPT` should mention it too. The point of the
+chat assistant is that it's a second way to *use* the app, not a smaller
+subset of it — a feature only reachable by clicking through `pages.py` is a
+feature Ask AI can't help with. A field that exists on the model and in the
+form but not in `ai.py`'s tool signature is exactly the kind of gap that
+makes the assistant tell someone "I can't do that" for something the app
+plainly supports.
+
+- Read tools (`list_*`, `get_*`, `search`) execute immediately; write tools
+  always pause for human confirmation (see `_MUTATING_TOOLS` in `ai.py`) — a
+  new mutation is never the exception to that.
+- This is also where a new tool's `search.index_entity(...)` call goes, the
+  same as every other write path — see `search.py`.
+
 ## Conventions specific to this codebase
 
 - **Zero pip dependencies beyond gunicorn** (dev-only, for autoreload).
