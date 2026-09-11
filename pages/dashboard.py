@@ -4,11 +4,9 @@ from __future__ import annotations
 
 from app import app, render
 from models import Client, Task
-from utils import require_login
 
 
 @app.route("/", method="GET", name="dashboard")
-@require_login
 def dashboard():
     open_clients = Client.select().where(Client.archived_at.is_null(True)).count()
     open_tasks = Task.select().where(Task.archived_at.is_null(True) & (Task.status != "done")).count()

@@ -6,7 +6,7 @@ from bottle import request
 
 from app import app, render
 from models import Invite, TeamMember, User
-from utils import current_user, flash, hash_password, redirect, require_login, team_member, url_for, verify_password
+from utils import current_user, flash, hash_password, redirect, team_member, url_for, verify_password
 
 
 def _team_members() -> list[dict]:
@@ -15,7 +15,6 @@ def _team_members() -> list[dict]:
 
 
 @app.route("/settings", method="GET", name="settings")
-@require_login
 def settings_page():
     member = team_member()
     return render(
@@ -27,7 +26,6 @@ def settings_page():
 
 
 @app.route("/settings/password", method="POST", name="settings_password")
-@require_login
 def settings_password():
     # Redirects target the #change-password <details> fragment — browsers
     # auto-expand a <details> containing the :target element, so the form

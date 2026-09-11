@@ -149,22 +149,23 @@ def csrf_token() -> str:
 
 
 # Routes authenticated independently of the session (see
-# require_internal_secret) have no session-seeded CSRF token to present, so
-# csrf_protect() skips them by path. Checked by path rather than a
-# decorator-set marker on the route's callback because Bottle's
-# before_request hooks fire *before* routing — request.route isn't
-# resolved yet at this point, so there's no callback to inspect here.
-_CSRF_EXEMPT_PATHS = frozenset({"/internal/ai-command"})
+# require_internal_secret) have no session-seeded CSRF token to present and
+# no session to be logged in on, so both csrf_protect() below and the
+# login-required hook (app.py) skip them by path. Checked by path rather
+# than a route name (contrast PUBLIC_ROUTES in this module) because
+# Bottle's before_request hooks fire *before* routing — request.route isn't
+# resolved yet at this point, so there's no route to look a name up on.
+SESSION_INDEPENDENT_PATHS = frozenset({"/internal/ai-command"})
 
 
 def csrf_protect() -> None:
     """Registered as a before_request hook. Every mutating request is
-    checked uniformly, except the paths in _CSRF_EXEMPT_PATHS — today just
-    the admin app's internal Ask-AI proxy endpoint, which authenticates
-    itself via a shared secret instead of a session."""
+    checked uniformly, except the paths in SESSION_INDEPENDENT_PATHS —
+    today just the admin app's internal Ask-AI proxy endpoint, which
+    authenticates itself via a shared secret instead of a session."""
     if request.method in ("GET", "HEAD", "OPTIONS"):
         return
-    if request.path in _CSRF_EXEMPT_PATHS:
+    if request.path in SESSION_INDEPENDENT_PATHS:
         return
     expected = csrf_token()
     supplied = request.forms.get("_csrf_token") or request.headers.get("X-CSRF-Token") or ""
@@ -273,21 +274,26 @@ def role_at_least(role: str | None, minimum: str) -> bool:
     return _ROLE_RANK.get(role or "", 0) >= _ROLE_RANK.get(minimum, 99)
 
 
-def require_login(view: Callable) -> Callable:
-    """Decorator for routes in pages/ that need an authenticated user."""
-
-    @functools.wraps(view)
-    def wrapper(*args: Any, **kwargs: Any):
-        if current_user() is None:
-            redirect(url_for("login"))
-        return view(*args, **kwargs)
-
-    return wrapper
+# Route *names* (the `name=` passed to @app.route(...) in pages/), not
+# paths — so the token-parameterized accept-invite/reset-password URLs
+# don't need special-casing the way a path-based list would. Every route
+# requires a logged-in user by default (see _require_login_hook in
+# pages/__init__.py, which resolves the route via app.match() and checks
+# it against this set); these are the handful of pages a signed-out
+# visitor genuinely needs to reach.
+PUBLIC_ROUTES = frozenset({
+    "register_owner", "register_owner_submit",
+    "login", "login_submit",
+    "accept_invite", "accept_invite_submit",
+    "forgot_password", "forgot_password_submit",
+    "reset_password", "reset_password_submit",
+})
 
 
 def require_role(minimum_role: str) -> Callable[[Callable], Callable]:
     """Decorator: require the current user's team role >= minimum_role.
-    Assumes require_login already ran (or is stacked directly above this)."""
+    Assumes a user is already logged in — true for every route by default
+    (see PUBLIC_ROUTES above), so this only needs to check the role."""
 
     def decorator(view: Callable) -> Callable:
         @functools.wraps(view)

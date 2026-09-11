@@ -7,11 +7,10 @@ from bottle import request
 from app import app
 from models import Comment, Task
 from pages._shared import _redirect_to_subject
-from utils import current_user, flash, notify, record_activity, redirect, require_login, url_for
+from utils import current_user, flash, notify, record_activity, redirect, url_for
 
 
 @app.route("/comments", method="POST", name="comment_create")
-@require_login
 def comment_create():
     subject_type = request.forms.get("subject_type") or ""
     subject_id = int(request.forms.get("subject_id") or 0)
@@ -29,7 +28,6 @@ def comment_create():
 
 
 @app.route("/comments/<comment_id:int>/delete", method="POST", name="comment_delete")
-@require_login
 def comment_delete(comment_id: int):
     comment = Comment.select().where(Comment.id == comment_id).first()
     if comment is not None:

@@ -9,10 +9,17 @@ file per feature instead of one file per app.
 
 from __future__ import annotations
 
-from bottle import request
+from bottle import HTTPError, request
 
 from app import app
-from utils import any_team_members_exist, redirect, url_for
+from utils import (
+    PUBLIC_ROUTES,
+    SESSION_INDEPENDENT_PATHS,
+    any_team_members_exist,
+    current_user,
+    redirect,
+    url_for,
+)
 
 
 @app.hook("before_request")
@@ -22,6 +29,38 @@ def _bootstrap_redirect() -> None:
         return
     if not any_team_members_exist():
         redirect(url_for("register_owner"))
+
+
+@app.hook("before_request")
+def _require_login_hook() -> None:
+    """Every route requires a logged-in user by default — the opposite of a
+    per-route @require_login decorator, which is easy to forget on a new
+    route and silently leave unprotected. PUBLIC_ROUTES (utils.py) lists
+    the handful of routes a signed-out visitor genuinely needs to reach
+    (register, login, accept-invite, forgot/reset password); everything
+    else redirects to /login.
+
+    Registered *after* _bootstrap_redirect above — before_request hooks run
+    in registration order (see Bottle's add_hook) — so a fresh, team-less
+    instance always lands on /register first, before this hook gets a
+    chance to bounce it to /login instead.
+
+    Resolves the route itself via app.match() rather than checking
+    request.route: before_request hooks fire *before* Bottle's own routing
+    (see utils.py's SESSION_INDEPENDENT_PATHS comment), so there's no route
+    to inspect yet at this point otherwise. match() is a plain, read-only
+    lookup (see Router.match) — cheap to do twice per request.
+    """
+    if request.path.startswith("/static/") or request.path in SESSION_INDEPENDENT_PATHS:
+        return
+    try:
+        route, _ = app.match(request.environ)
+    except HTTPError:
+        return  # a 404/405 — let Bottle's own routing surface that normally
+    if route.name in PUBLIC_ROUTES:
+        return
+    if current_user() is None:
+        redirect(url_for("login"))
 
 
 # Import each feature module for its route-registration side effects only.

@@ -12,14 +12,13 @@ from bottle import request
 from app import BASE_DIR, app
 from models import Attachment
 from pages._shared import _redirect_to_subject
-from utils import current_user, flash, record_activity, redirect, require_login, slugify, url_for
+from utils import current_user, flash, record_activity, redirect, slugify, url_for
 
 UPLOAD_FOLDER = os.environ.get("UPLOAD_FOLDER", os.path.join(BASE_DIR, "uploads"))
 MAX_UPLOAD_SIZE = 10 * 1024 * 1024  # 10 MB
 
 
 @app.route("/attachments", method="POST", name="attachment_upload")
-@require_login
 def attachment_upload():
     subject_type = request.forms.get("subject_type") or ""
     subject_id = int(request.forms.get("subject_id") or 0)
@@ -53,7 +52,6 @@ def attachment_upload():
 
 
 @app.route("/attachments/<attachment_id:int>", method="GET", name="attachment_download")
-@require_login
 def attachment_download(attachment_id: int):
     from bottle import static_file
 
@@ -64,7 +62,6 @@ def attachment_download(attachment_id: int):
 
 
 @app.route("/attachments/<attachment_id:int>/delete", method="POST", name="attachment_delete")
-@require_login
 def attachment_delete(attachment_id: int):
     attachment = Attachment.select().where(Attachment.id == attachment_id).first()
     if attachment is not None:

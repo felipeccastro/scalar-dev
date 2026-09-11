@@ -9,11 +9,10 @@ from bottle import request
 from app import app, render
 from models import CLIENT_STATUSES, Client, Task
 from pages._shared import _load_activity, _load_attachments, _load_comments
-from utils import current_user, flash, record_activity, redirect, require_login, url_for
+from utils import current_user, flash, record_activity, redirect, url_for
 
 
 @app.route("/clients", method="GET", name="clients_list")
-@require_login
 def clients_list():
     q = (request.query.get("q") or "").strip()
     query = Client.select().where(Client.archived_at.is_null(True))
@@ -26,7 +25,6 @@ def clients_list():
 
 
 @app.route("/clients", method="POST", name="clients_create")
-@require_login
 def clients_create():
     name = (request.forms.get("name") or "").strip()
     if not name:
@@ -47,7 +45,6 @@ def clients_create():
 
 
 @app.route("/clients/<client_id:int>", method="GET", name="client_detail")
-@require_login
 def client_detail(client_id: int):
     client = Client.select().where(Client.id == client_id).first()
     if client is None:
@@ -68,7 +65,6 @@ def client_detail(client_id: int):
 
 
 @app.route("/clients/<client_id:int>", method="POST", name="client_update")
-@require_login
 def client_update(client_id: int):
     client = Client.select().where(Client.id == client_id).first()
     if client is None:
@@ -88,7 +84,6 @@ def client_update(client_id: int):
 
 
 @app.route("/clients/<client_id:int>/archive", method="POST", name="client_archive")
-@require_login
 def client_archive(client_id: int):
     client = Client.select().where(Client.id == client_id).first()
     if client is not None:

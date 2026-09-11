@@ -11,7 +11,7 @@ from bottle import request, response
 from app import app, render
 from models import TASK_STATUSES, Client, Task, TeamMember, User
 from pages._shared import _load_activity, _load_attachments, _load_comments
-from utils import abort, current_user, flash, notify, record_activity, redirect, require_login, url_for
+from utils import abort, current_user, flash, notify, record_activity, redirect, url_for
 
 
 def _active_clients() -> list[Client]:
@@ -23,7 +23,6 @@ def _team_users() -> list[User]:
 
 
 @app.route("/tasks", method="GET", name="tasks_list")
-@require_login
 def tasks_list():
     q = (request.query.get("q") or "").strip()
     query = Task.select().where(Task.archived_at.is_null(True))
@@ -42,7 +41,6 @@ def tasks_list():
 
 
 @app.route("/tasks", method="POST", name="tasks_create")
-@require_login
 def tasks_create():
     title = (request.forms.get("title") or "").strip()
     if not title:
@@ -68,7 +66,6 @@ def tasks_create():
 
 
 @app.route("/tasks/<task_id:int>", method="GET", name="task_detail")
-@require_login
 def task_detail(task_id: int):
     task = Task.select().where(Task.id == task_id).first()
     if task is None:
@@ -87,7 +84,6 @@ def task_detail(task_id: int):
 
 
 @app.route("/tasks/<task_id:int>", method="POST", name="task_update")
-@require_login
 def task_update(task_id: int):
     task = Task.select().where(Task.id == task_id).first()
     if task is None:
@@ -116,7 +112,6 @@ def task_update(task_id: int):
 
 
 @app.route("/tasks/reorder", method="POST", name="tasks_reorder")
-@require_login
 def tasks_reorder():
     """Drag-and-drop endpoint for the /tasks board (see the script at the
     bottom of tasks_list.html). The board sends the *entire*, freshly
@@ -146,7 +141,6 @@ def tasks_reorder():
 
 
 @app.route("/tasks/<task_id:int>/archive", method="POST", name="task_archive")
-@require_login
 def task_archive(task_id: int):
     task = Task.select().where(Task.id == task_id).first()
     if task is not None:

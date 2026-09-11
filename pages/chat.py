@@ -8,12 +8,11 @@ from bottle import request, response
 
 from app import app, render
 from models import ChatMessage, ChatThread, TeamMember
-from utils import current_user, flash, redirect, require_internal_secret, require_login, url_for
+from utils import current_user, flash, redirect, require_internal_secret, url_for
 import ai
 
 
 @app.route("/chat", method="GET", name="chat")
-@require_login
 def chat_page():
     thread = ChatThread.select().where(ChatThread.user == current_user()).first()
     messages = list(ChatMessage.select().where(ChatMessage.thread == thread).order_by(ChatMessage.id)) if thread else []
@@ -26,7 +25,6 @@ def chat_page():
 
 
 @app.route("/chat", method="POST", name="chat_send")
-@require_login
 def chat_send():
     text = (request.forms.get("message") or "").strip()
     if text:
@@ -42,7 +40,6 @@ def chat_send():
 
 
 @app.route("/chat/confirm", method="POST", name="chat_confirm")
-@require_login
 def chat_confirm():
     thread, _ = ChatThread.get_or_create(user=current_user())
     try:
@@ -55,7 +52,6 @@ def chat_confirm():
 
 
 @app.route("/chat/cancel", method="POST", name="chat_cancel")
-@require_login
 def chat_cancel():
     thread, _ = ChatThread.get_or_create(user=current_user())
     try:

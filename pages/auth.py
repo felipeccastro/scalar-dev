@@ -19,7 +19,6 @@ from utils import (
     login_user,
     logout_user,
     redirect,
-    require_login,
     require_role,
     url_for,
     verify_password,
@@ -77,14 +76,12 @@ def login_submit():
 
 
 @app.route("/logout", method="POST", name="logout")
-@require_login
 def logout():
     logout_user()
     redirect(url_for("login"))
 
 
 @app.route("/invite", method="POST", name="invite_teammate")
-@require_login
 @require_role("admin")
 def invite_teammate():
     email = (request.forms.get("email") or "").strip().lower()
