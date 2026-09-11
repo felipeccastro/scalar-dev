@@ -177,7 +177,7 @@ def require_internal_secret(view: Callable) -> Callable:
     (this instance's own SECRET_KEY, set in its .env at provision time)
     instead of a session or login. The only caller is the admin app's own
     Ask AI, reaching this over localhost to run a natural-language instruction
-    through this app's own chat tools — see pages.py's /internal/ai-command."""
+    through this app's own chat tools — see pages/chat.py's /internal/ai-command."""
 
     @functools.wraps(view)
     def wrapper(*args: Any, **kwargs: Any):
@@ -274,7 +274,7 @@ def role_at_least(role: str | None, minimum: str) -> bool:
 
 
 def require_login(view: Callable) -> Callable:
-    """Decorator for routes in pages.py that need an authenticated user."""
+    """Decorator for routes in pages/ that need an authenticated user."""
 
     @functools.wraps(view)
     def wrapper(*args: Any, **kwargs: Any):
@@ -312,7 +312,7 @@ def any_team_members_exist() -> bool:
 
 # ---------------------------------------------------------------------------
 # url_for — thin wrapper over Bottle's named-route lookup so templates and
-# pages.py have a stable, framework-shaped API.
+# pages/ have a stable, framework-shaped API.
 # ---------------------------------------------------------------------------
 
 

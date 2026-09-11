@@ -68,7 +68,7 @@ Highlights:
 
 ```
 app.py        # Bottle app factory, hooks, template rendering, entrypoint
-pages.py      # every route (no blueprints — one flat file)
+pages/        # every route (no blueprints — one file per feature area)
 models.py     # peewee models + ensure_schema() (the whole "migrations" story)
 utils.py      # session/CSRF/password hashing/email/flash — hand-rolled, stdlib only
 ai.py         # Ask AI: tool-calling agent loop + Markdown renderer

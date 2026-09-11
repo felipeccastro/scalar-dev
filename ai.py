@@ -263,9 +263,9 @@ TOOLS_SCHEMA: list[dict] = [
 ]
 
 # Mutating tools never execute immediately — _agent_loop pauses on these and
-# hands control back to pages.py/chat.html for a human Confirm/Cancel before
-# _execute_tool ever actually runs one. Read tools (above) keep running the
-# moment the model calls them, exactly as before.
+# hands control back to pages/chat.py/chat.html for a human Confirm/Cancel
+# before _execute_tool ever actually runs one. Read tools (above) keep
+# running the moment the model calls them, exactly as before.
 _MUTATING_TOOLS = frozenset({
     "create_client", "update_client", "archive_client",
     "create_task", "update_task", "archive_task",
@@ -354,11 +354,12 @@ def _tool_search(*, query: str, limit: int = 10) -> dict:
 
 
 # ---------------------------------------------------------------------------
-# Write tools — mirror pages.py's Client/Task CRUD routes exactly (same field
-# lists, same record_activity/notify calls) so an AI-driven write behaves
-# identically to a human using the form UI. Never raise across the tool
-# boundary — bad ids/status/missing fields all come back as {"error": ...}
-# so the model (and eventually the human, via _describe_tool_call) sees a
+# Write tools — mirror the pages/clients.py and pages/tasks.py CRUD routes
+# exactly (same field lists, same record_activity/notify calls) so an
+# AI-driven write behaves identically to a human using the form UI. Never
+# raise across the tool boundary — bad ids/status/missing fields all come
+# back as {"error": ...} so the model (and eventually the human, via
+# _describe_tool_call) sees a
 # clean message instead of a stack trace. `actor` is injected by
 # _execute_tool, not part of the tool's JSON schema the model sees.
 # ---------------------------------------------------------------------------
@@ -731,8 +732,9 @@ def _post_ollama(convo: list[dict], *, tools: list[dict] | None) -> dict:
 
 class _NeedsConfirmation:
     """Sentinel returned by _agent_loop when the model proposes one or more
-    mutating tool calls — they must be confirmed by a human (via pages.py's
-    /chat/confirm or /chat/cancel) before _execute_tool actually runs them."""
+    mutating tool calls — they must be confirmed by a human (via
+    pages/chat.py's /chat/confirm or /chat/cancel) before _execute_tool
+    actually runs them."""
 
     def __init__(self, convo: list[dict], pending_calls: list[dict], round_idx: int):
         self.convo = convo

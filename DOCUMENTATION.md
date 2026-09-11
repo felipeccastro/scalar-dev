@@ -45,7 +45,7 @@ and peewee are vendored as plain `.py` files in `vendor/`. See the
   `/login` — there's no open sign-up after that.
 - **Roles**: `owner`, `admin`, `member` (`TeamMember.role`). The only
   role-gated action is **sending an invite** (owner/admin — `@require_role`
-  in `pages.py`). Everything else (Clients/Tasks CRUD, comments,
+  in `pages/auth.py`). Everything else (Clients/Tasks CRUD, comments,
   attachments) is open to any signed-in team member; roles are otherwise
   informational (shown in the Settings team table).
 - **Inviting**: an owner/admin enters an email on the Settings page, which

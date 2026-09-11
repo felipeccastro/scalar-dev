@@ -12,15 +12,16 @@ import json
 import os
 import sys
 
-# pages.py does `from app import app` so every route can be declared as
-# `@app.route(...)` without a blueprint indirection. If this file is ever
-# launched directly (`python3 app.py`), Python runs it as `__main__` — and
-# that `from app import app` would otherwise import a *second*, separate
-# copy of this module under the name "app", with its own fresh Bottle()
-# instance that never sees any of pages.py's routes (the one actually
-# passed to run() below would then only have the routes registered above
-# this point). Aliasing "app" to the already-running module up front makes
-# the later self-import a no-op lookup instead of a second execution.
+# Every module in pages/ does `from app import app` so every route can be
+# declared as `@app.route(...)` without a blueprint indirection. If this
+# file is ever launched directly (`python3 app.py`), Python runs it as
+# `__main__` — and that `from app import app` would otherwise import a
+# *second*, separate copy of this module under the name "app", with its
+# own fresh Bottle() instance that never sees any of pages/'s routes (the
+# one actually passed to run() below would then only have the routes
+# registered above this point). Aliasing "app" to the already-running
+# module up front makes the later self-import a no-op lookup instead of a
+# second execution.
 sys.modules.setdefault("app", sys.modules[__name__])
 
 # peewee and bottle are vendored in vendor/ as plain .py files, not
@@ -156,8 +157,8 @@ def _open_session_hook() -> None:
 @app.hook("before_request")
 def _csrf_protect_hook() -> None:
     # Static assets are served by Bottle's own static_file handler further
-    # down and never mutate anything, so this only ever fires for pages.py
-    # routes — but it still runs before routing (see bottle's _handle), so it
+    # down and never mutate anything, so this only ever fires for routes in
+    # pages/ — but it still runs before routing (see bottle's _handle), so it
     # applies uniformly to every non-GET request regardless of path.
     if request.path.startswith("/static/"):
         return
@@ -232,10 +233,11 @@ def _server_error(_error: HTTPError):
         )
 
 
-# Route registration lives in pages.py, imported for its side effects only —
-# every view there does `from app import app` and decorates directly (no
-# blueprints, to keep the whole app in one flat file per the file-count
-# budget). Must be imported after `app`/`render`/hooks exist above.
+# Route registration lives in the pages/ package, imported for its side
+# effects only — every view there does `from app import app` and decorates
+# directly (no blueprints; pages/ splits routes by feature area rather than
+# introducing that indirection). Must be imported after `app`/`render`/hooks
+# exist above.
 import pages  # noqa: E402,F401
 
 

@@ -150,9 +150,9 @@ class Task(BaseModel):
 
 SUBJECT_TYPES = ("client", "task")
 
-# Shared with pages.py (form choices) and ai.py (tool-schema enums / write-tool
+# Shared with pages/ (form choices) and ai.py (tool-schema enums / write-tool
 # validation) — defined once here so ai.py can import them without importing
-# pages.py back (pages.py does `import ai`, so that direction would cycle).
+# pages/ back (pages/chat.py does `import ai`, so that direction would cycle).
 CLIENT_STATUSES = ("lead", "active", "inactive")
 TASK_STATUSES = ("todo", "in_progress", "done")
 
@@ -280,8 +280,8 @@ ALL_MODELS = [
 def seed_demo_data(owner: User) -> None:
     """A couple of realistic Clients/Tasks so a freshly-provisioned instance
     isn't an empty screen. Called once, right after the first owner registers
-    (see pages.py:register_owner_submit) — not from ensure_schema(), since it
-    needs a real User to attribute the rows to."""
+    (see pages/auth.py:register_owner_submit) — not from ensure_schema(),
+    since it needs a real User to attribute the rows to."""
     acme = Client.create(
         name="Acme Corp", email="hello@acme.example", company="Acme Corp",
         status="active", notes="Long-time client, monthly retainer.",
