@@ -255,6 +255,14 @@ notification still goes out either way.
   (`--danger`/`--success`/`--warning`) get deepened for legibility as text
   on a white background, and each one's `-foreground` pairing (used for
   solid-fill buttons like **Archive**) flips alongside it.
+- **Installable**: a manifest (`static/manifest.json`) plus favicon/
+  apple-touch-icon links and `theme-color`/`apple-mobile-web-app-*` meta
+  tags in `layout.html`'s `<head>` make this installable as a standalone app
+  from a browser's "Install"/"Add to Home Screen" prompt — no service
+  worker, just enough for the OS to treat it as an app icon. Same brand mark
+  as admin's own (`admin/static/favicon.svg` + `icon-*.png`, regenerated via
+  `admin/scripts/make_icons.py`), copied in rather than shared since each
+  app serves its own `static/`.
 - **Toasts**: every flashed message (`utils.py: flash()`) renders as an
   `oat.toast()` popup (top-right, colored by category) instead of an inline
   banner — see `templates/_toasts.html`. Embeds the message as a JS string

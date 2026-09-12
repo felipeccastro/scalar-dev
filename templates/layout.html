@@ -6,6 +6,22 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>{{title if defined('title') else 'App'}}</title>
+  <!-- Favicon + PWA install metadata. Same brand assets as admin's own
+       (admin/static/favicon.svg + icon-*.png, regenerated via
+       admin/scripts/make_icons.py if the mark ever changes) — copied
+       rather than shared, since each app serves its own static/ root.
+       SVG first so the mark stays crisp on every display; the PNG is the
+       fallback for browsers that ignore rel=icon SVGs (Safari). No service
+       worker: manifest + icons + meta tags is enough to be installable. -->
+  <link rel="icon" type="image/svg+xml" href="{{url_for('static', filepath='favicon.svg')}}?v={{asset_version('favicon.svg')}}">
+  <link rel="icon" type="image/png" sizes="180x180" href="{{url_for('static', filepath='favicon.png')}}?v={{asset_version('favicon.png')}}">
+  <link rel="apple-touch-icon" href="{{url_for('static', filepath='icon-180.png')}}?v={{asset_version('icon-180.png')}}">
+  <link rel="manifest" href="{{url_for('static', filepath='manifest.json')}}?v={{asset_version('manifest.json')}}">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+  <meta name="apple-mobile-web-app-title" content="Binders Core">
+  <meta name="theme-color" content="#0a0a0b">
   <!-- Apply the saved theme (localStorage 'binders-core:theme', set live by
        the Settings page) before the stylesheets below load, so the page
        paints in the right palette from the first frame instead of flashing
