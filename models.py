@@ -215,6 +215,31 @@ class Activity(BaseModel):
         indexes = ((("subject_type", "subject_id", "created_at"), False),)
 
 
+class Reminder(BaseModel):
+    """A one-shot reminder, fired by jobs.py's scheduler once `remind_at`
+    passes: creates a Notification for `user` and emails them. Created only
+    from Ask AI today (ai.py: create_reminder) — no manual UI, the same
+    "AI-only record" shape as this app's other write tools, just applied to
+    a record type that has no form of its own. Generic-over-subject like
+    Comment/Attachment/Activity (optional; a reminder needn't reference a
+    client or task at all)."""
+
+    id = AutoField()
+    user = ForeignKeyField(User, backref="reminders", on_delete="CASCADE")
+    message = TextField()
+    subject_type = CharField(null=True)  # "client" | "task" | None — see SUBJECT_TYPES
+    subject_id = IntegerField(null=True)
+    remind_at = DateTimeField()
+    sent_at = DateTimeField(null=True)  # null = still pending; set once jobs.py fires it
+    created_by = ForeignKeyField(User, backref="created_reminders", null=True, on_delete="SET NULL")
+    created_at = DateTimeField(default=datetime.datetime.now)
+
+    class Meta:
+        database = db
+        # jobs.py's poll queries exactly this shape: due, unsent reminders.
+        indexes = ((("sent_at", "remind_at"), False),)
+
+
 class Notification(BaseModel):
     id = AutoField()
     user = ForeignKeyField(User, backref="notifications", on_delete="CASCADE")
@@ -272,6 +297,7 @@ ALL_MODELS = [
     Attachment,
     Activity,
     Notification,
+    Reminder,
     ChatThread,
     ChatMessage,
 ]

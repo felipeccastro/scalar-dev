@@ -30,12 +30,13 @@ import urllib.error
 import urllib.request
 from typing import Any
 
-from models import CLIENT_STATUSES, TASK_STATUSES, ChatMessage, ChatThread, Client, Task, User
+from models import CLIENT_STATUSES, TASK_STATUSES, ChatMessage, ChatThread, Client, Reminder, Task, User
 from utils import notify, record_activity
 
 REQUEST_TIMEOUT = 120
 MAX_TOOL_ROUNDTRIPS = 6
 HISTORY_MESSAGES = 12
+MAX_REMINDER_MINUTES = 60 * 24 * 365  # 1 year out, generous but not "forever"
 
 _SSL_CTX = ssl.create_default_context()
 
@@ -260,6 +261,35 @@ TOOLS_SCHEMA: list[dict] = [
             },
         },
     },
+    {
+        "type": "function",
+        "function": {
+            "name": "create_reminder",
+            "description": (
+                "Schedule a one-time reminder for the current user: it fires "
+                "remind_in_minutes from now, at which point the app sends them an "
+                "in-app notification and an email. Optionally link it to a client or "
+                "task (look the id up first via list_clients/get_client/list_tasks/ "
+                "get_task/search) — not both. Requires human confirmation."
+            ),
+            "parameters": {
+                "type": "object",
+                "properties": {
+                    "message": {"type": "string", "description": "What to remind them about."},
+                    "remind_in_minutes": {
+                        "type": "integer",
+                        "description": (
+                            "Whole minutes from now — e.g. 10 for \"in 10 minutes\", "
+                            "2880 for \"in 2 days\"."
+                        ),
+                    },
+                    "client_id": {"type": "integer", "description": "Optional; omit if unrelated to a client."},
+                    "task_id": {"type": "integer", "description": "Optional; omit if unrelated to a task."},
+                },
+                "required": ["message", "remind_in_minutes"],
+            },
+        },
+    },
 ]
 
 # Mutating tools never execute immediately — _agent_loop pauses on these and
@@ -269,6 +299,7 @@ TOOLS_SCHEMA: list[dict] = [
 _MUTATING_TOOLS = frozenset({
     "create_client", "update_client", "archive_client",
     "create_task", "update_task", "archive_task",
+    "create_reminder",
 })
 
 
@@ -511,6 +542,42 @@ def _tool_archive_task(*, actor, task_id: int) -> dict:
     return {"ok": True, "id": task.id, "title": task.title}
 
 
+def _tool_create_reminder(*, actor, message: str, remind_in_minutes: int,
+                           client_id: int | None = None, task_id: int | None = None) -> dict:
+    message = (message or "").strip()
+    if not message:
+        return {"error": "A reminder needs a message."}
+    try:
+        remind_in_minutes = int(remind_in_minutes)
+    except (TypeError, ValueError):
+        return {"error": "remind_in_minutes must be a whole number of minutes."}
+    if remind_in_minutes <= 0:
+        return {"error": "remind_in_minutes must be a positive number of minutes from now."}
+    if remind_in_minutes > MAX_REMINDER_MINUTES:
+        return {"error": f"Reminders can be set at most {MAX_REMINDER_MINUTES // (60 * 24)} days out."}
+    if client_id and task_id:
+        return {"error": "Link a reminder to a client or a task, not both."}
+    subject_type = subject_id = None
+    if client_id:
+        try:
+            Client.get_by_id(client_id)
+        except Client.DoesNotExist:
+            return {"error": f"No client #{client_id}."}
+        subject_type, subject_id = "client", client_id
+    elif task_id:
+        try:
+            Task.get_by_id(task_id)
+        except Task.DoesNotExist:
+            return {"error": f"No task #{task_id}."}
+        subject_type, subject_id = "task", task_id
+    remind_at = datetime.datetime.now() + datetime.timedelta(minutes=remind_in_minutes)
+    reminder = Reminder.create(
+        user=actor, message=message, remind_at=remind_at,
+        subject_type=subject_type, subject_id=subject_id, created_by=actor,
+    )
+    return {"ok": True, "id": reminder.id, "message": reminder.message, "remind_at": remind_at.isoformat()}
+
+
 _DISPATCH = {
     "list_clients": _tool_list_clients,
     "get_client": _tool_get_client,
@@ -523,6 +590,7 @@ _DISPATCH = {
     "create_task": _tool_create_task,
     "update_task": _tool_update_task,
     "archive_task": _tool_archive_task,
+    "create_reminder": _tool_create_reminder,
 }
 
 
@@ -565,6 +633,18 @@ def _user_label(user_id) -> str:
         return f"user #{user_id}"
 
 
+def _format_minutes(minutes: int) -> str:
+    """e.g. 2880 -> "2 days", 10 -> "10 minutes" — for the confirmation
+    banner, so it doesn't just echo the raw minute count the model sent."""
+    if minutes % (60 * 24) == 0 and minutes >= 60 * 24:
+        days = minutes // (60 * 24)
+        return f"{days} day{'s' if days != 1 else ''}"
+    if minutes % 60 == 0 and minutes >= 60:
+        hours = minutes // 60
+        return f"{hours} hour{'s' if hours != 1 else ''}"
+    return f"{minutes} minute{'s' if minutes != 1 else ''}"
+
+
 def _describe_tool_call(name: str, args: dict) -> str:
     """Plain-language summary of a proposed write, for the confirmation UI —
     resolves ids to real names via a lookup, never echoes raw tool-call JSON."""
@@ -598,6 +678,14 @@ def _describe_tool_call(name: str, args: dict) -> str:
             else:
                 parts.append(f"{k} to {v!r}")
         return f"Update {label}: set " + ", ".join(parts) + "." if parts else f"Update {label} (no changes given)."
+    if name == "create_reminder":
+        when = _format_minutes(args.get("remind_in_minutes") or 0)
+        bits = [f'Remind you in {when}: "{args.get("message", "?")}"']
+        if args.get("client_id"):
+            bits.append(f"(about {_client_label(args['client_id'])})")
+        if args.get("task_id"):
+            bits.append(f"(about {_task_label(args['task_id'])})")
+        return " ".join(bits) + "."
     return f"{name}({json.dumps(args, ensure_ascii=False)})"
 
 
@@ -615,16 +703,23 @@ proactively instead of guessing — e.g. "what's overdue for Acme?" -> search("A
 list_clients(), then get_client(id) to see their tasks.
 
 You also have write tools: create_client, update_client, archive_client, create_task, \
-update_task, archive_task. Every write tool call is paused and shown to a human for explicit \
-confirmation before it takes effect — you never need to ask "are you sure?" or "should I go \
-ahead?" in your own words first; just call the tool, and the app's own UI handles confirming or \
-cancelling. Don't tell the user a change has happened until you see the tool's actual result — a \
-pending write hasn't happened yet, and it may be declined.
+update_task, archive_task, create_reminder. Every write tool call is paused and shown to a human \
+for explicit confirmation before it takes effect — you never need to ask "are you sure?" or \
+"should I go ahead?" in your own words first; just call the tool, and the app's own UI handles \
+confirming or cancelling. Don't tell the user a change has happened until you see the tool's \
+actual result — a pending write hasn't happened yet, and it may be declined.
 
 update_client/update_task are partial updates: only pass fields you actually intend to change; \
 omitted fields are left exactly as they are. Look ids up first (list_clients/get_client/ \
 list_tasks/get_task/search) rather than guessing them. There is no hard delete and no "unarchive" \
 tool — archiving is the only removal action, and it's one-way.
+
+create_reminder schedules a one-time reminder for the person you're talking to: give it a message \
+and remind_in_minutes (a whole number of minutes from now — convert "in 10 minutes" to 10, "in 2 \
+days" to 2880, "in an hour" to 60, etc. — there's no separate date/time field, just an offset). \
+Optionally link it to a client_id or task_id (not both) if the reminder is about one. When it \
+fires, the app sends the user a notification and an email — there's no page to browse or cancel \
+pending reminders yet, so mention that if someone asks to see or undo one.
 
 Keep replies short and concrete. Reference records by name, not raw ids, unless the user is \
 asking about a specific id. If a tool returns an error, relay it plainly rather than making \

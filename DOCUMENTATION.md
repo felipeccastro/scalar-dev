@@ -15,6 +15,7 @@ page. Keep it in sync with the code — see [AGENTS.md](AGENTS.md).
 - [Comments, attachments & activity](#comments-attachments--activity)
 - [Notifications](#notifications)
 - [Ask AI (chat assistant)](#ask-ai-chat-assistant)
+- [Scheduled jobs & reminders](#scheduled-jobs--reminders)
 - [Settings & appearance](#settings--appearance)
 - [Error pages](#error-pages)
 - [Navigation & keyboard](#navigation--keyboard)
@@ -122,10 +123,11 @@ model):
 
 ## Notifications
 
-`/notifications` — a flat, newest-first list. Two kinds today:
-**assignment** (you were made a task's assignee) and **comment** (someone
+`/notifications` — a flat, newest-first list. Three kinds today:
+**assignment** (you were made a task's assignee), **comment** (someone
 commented on something — not currently wired to any route, but the
-`notify()` helper and template already handle the kind). Unread rows get a
+`notify()` helper and template already handle the kind), and **reminder**
+(see [Scheduled jobs & reminders](#scheduled-jobs--reminders)). Unread rows get a
 dot marker; "Mark all read" and per-row "Mark read" are both one POST.
 There's no unread-count badge in the sidebar nav yet.
 
@@ -143,7 +145,9 @@ is 1:1 with `User`). Two interchangeable backends, picked automatically:
 It's a tool-calling agent (`ai.py`) over both **read** tools (`list_clients`,
 `get_client`, `list_tasks`, `get_task`, `search`) and **write** tools
 (`create_client`, `update_client`, `archive_client`, `create_task`,
-`update_task`, `archive_task`) — up to `MAX_TOOL_ROUNDTRIPS` (6) per message.
+`update_task`, `archive_task`, `create_reminder` — see
+[Scheduled jobs & reminders](#scheduled-jobs--reminders)) — up to
+`MAX_TOOL_ROUNDTRIPS` (6) per message.
 Read tools execute immediately; a write tool call **pauses the turn** and
 shows a confirmation banner ("The assistant wants to: …") with Confirm/
 Cancel buttons before anything is actually written — `ChatThread.pending_*`
@@ -155,6 +159,22 @@ cancelling drops it and tells the model so.
 Model replies are rendered through a small hand-rolled Markdown-to-HTML
 renderer (`ai.py: render_markdown`) — the only place in the app that
 happens; everything else (comments, descriptions, notes) is plain text.
+
+## Scheduled jobs & reminders
+
+`jobs.py` runs a single background thread (started from `app.py` at process
+startup) that polls the database every 30 seconds and runs whichever
+registered jobs are due — a small stdlib-only (`threading` + `time`)
+scheduler, not a task queue.
+
+The one job today is firing **reminders**: a `Reminder` (message, `remind_at`,
+optionally linked to a client or task) is created only via Ask AI's
+`create_reminder` tool — "remind me about Acme in 2 days" or "remind me about
+this task in 10 minutes" — there's no manual form for it. Once `remind_at`
+passes, the job creates a **reminder** notification (see
+[Notifications](#notifications)) for whoever asked, emails them the reminder
+text, and logs a `reminder_fired` activity entry if it was linked to a client
+or task. There's no page to browse or cancel a reminder before it fires.
 
 ## Settings & appearance
 
@@ -201,11 +221,14 @@ could fail with it.
 
 ## Email
 
-Postmark's HTTP API (`utils.py: Mailer`), used for invite and
-password-reset emails. Without `POSTMARK_API_KEY` set, sending raises
-`MailerError`; both call sites catch that and fall back to putting the
-link directly in a flash message ("Share this link instead: …") so the
-flow still works without email configured — handy for local dev.
+Postmark's HTTP API (`utils.py: Mailer`), used for invite, password-reset,
+and reminder emails. Without `POSTMARK_API_KEY` set, sending raises
+`MailerError`; the invite/reset call sites catch that and fall back to
+putting the link directly in a flash message ("Share this link instead: …")
+so the flow still works without email configured — handy for local dev.
+`jobs.py`'s reminder job instead just logs the failure and moves on (there's
+no request/flash to fall back to from a background thread) — the in-app
+notification still goes out either way.
 
 ## Interface & behavior
 
@@ -267,6 +290,7 @@ migrations directory).
 | `Attachment` | Generic over subject. Local-disk file, metadata in DB. |
 | `Activity` | Generic over subject. Append-only log: verb + JSON payload. |
 | `Notification` | Per-user. `kind` + JSON payload, `read_at`. |
+| `Reminder` | message, `remind_at`, optional client/task link, `sent_at` (null until `jobs.py` fires it). Created only via Ask AI. |
 | `ChatThread` | 1:1 with `User`. Holds `pending_*` fields for an in-flight write confirmation. |
 | `ChatMessage` | user/assistant turns in a thread. |
 

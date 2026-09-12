@@ -448,6 +448,14 @@ class Mailer:
         )
         return cls.send(to=email, subject=subject, html_body=html_body)
 
+    @classmethod
+    def send_reminder(cls, *, email: str, message: str) -> dict:
+        """Sent by jobs.py when a Reminder's remind_at passes. Always to the
+        reminder's own user — there's no "remind someone else" tool."""
+        subject = f"Reminder: {message[:120]}"
+        html_body = cls._wrap(f"<p>{_esc(message)}</p>")
+        return cls.send(to=email, subject=subject, html_body=html_body)
+
     @staticmethod
     def _wrap(inner_html: str) -> str:
         return (

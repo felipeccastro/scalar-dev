@@ -69,6 +69,14 @@ _load_dotenv()
 # gunicorn's `app:app`). Idempotent: safe to call on every process start.
 ensure_schema()
 
+# Same reasoning as ensure_schema() above: started here, not just under
+# `if __name__ == '__main__'`, so the reminder-firing job (see jobs.py) also
+# runs under `gunicorn app:app`. jobs.start() is idempotent and the thread is
+# a daemon, so this is safe however many times/entrypoints import this module.
+import jobs  # noqa: E402
+
+jobs.start()
+
 DEBUG = os.environ.get("DEBUG", "1") == "1"
 # Set at module level (not just under `if __name__ == '__main__'`) so it
 # also applies under `gunicorn app:app` — gunicorn's own --reload only
