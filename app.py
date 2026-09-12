@@ -38,6 +38,7 @@ from utils import (
     csrf_token,
     current_user,
     get_flashed_messages,
+    notification_summary,
     open_session,
     save_session,
     url_for,
@@ -131,6 +132,7 @@ _TEMPLATE_DEFAULTS = {
     "get_flashed_messages": get_flashed_messages,
     "asset_version": asset_version,
     "status_label": status_label,
+    "notification_summary": notification_summary,
     # Exposed so layout.html can highlight the current section in the
     # sidebar nav (`request.path.startswith(...)`) without every route
     # having to pass its own "active nav" flag through render().

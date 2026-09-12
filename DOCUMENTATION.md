@@ -176,6 +176,17 @@ passes, the job creates a **reminder** notification (see
 text, and logs a `reminder_fired` activity entry if it was linked to a client
 or task. There's no page to browse or cancel a reminder before it fires.
 
+A fired reminder pops up as a toast wherever the person is in the app, not
+just on their next click: a small polling script in `layout.html` hits
+`GET /notifications/poll` every 20 seconds and shows whatever comes back via
+the same `ot.toast()` used for flash messages. A page that's already open
+gets the toast within that window; `pages/notifications.py`'s
+`_toast_due_reminders` `before_request` hook is the no-JS/first-load
+fallback for everyone else. Either path marks the reminder's notification
+read — for a reminder, seeing the toast *is* the read receipt, unlike
+assignment/comment notifications, which still wait for an explicit "mark
+read" on the /notifications page.
+
 ## Settings & appearance
 
 `/settings`:

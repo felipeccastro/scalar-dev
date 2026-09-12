@@ -11,7 +11,7 @@
   <ul class="plain-list">
     %for n in notifications:
       <li class="{{'is-unread' if not n.read_at else ''}}">
-        <span class="badge">{{n.kind}}</span> {{n.payload_json}}
+        <span class="badge">{{n.kind}}</span> {{notification_summary(n)}}
         <span class="muted">&middot; {{n.created_at.strftime('%b %d, %H:%M')}}</span>
         %if not n.read_at:
           <form method="post" action="{{url_for('notification_read', notification_id=n.id)}}" class="inline-form">

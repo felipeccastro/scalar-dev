@@ -94,6 +94,24 @@
       {{!base}}
     </main>
   </div>
+  <!-- Polls for a fired reminder every 20s so it pops up as a toast on
+       whatever page is already open, instead of waiting for the next
+       navigation (see pages/notifications.py: notifications_poll /
+       _toast_due_reminders — same toasts either way, just two different
+       triggers for the same underlying gap: jobs.py fires a reminder from
+       a background thread with no request/session of its own to flash()
+       into). The one exception to this app's no-app-authored-JS rule
+       beyond Esc-navigation/the theme toggle, because there's no
+       declarative way to poll. ot.toast() is already loaded via oat.min.js
+       (see the <script defer> in <head>). -->
+  <script>
+    setInterval(() => {
+      fetch({{!js_string(url_for('notifications_poll'))}})
+        .then((r) => (r.ok ? r.json() : {toasts: []}))
+        .then((data) => (data.toasts || []).forEach((msg) => ot.toast(msg, null, {variant: 'info'})))
+        .catch(() => {});
+    }, 20000);
+  </script>
 %else:
   <div class="auth-shell">
     <div class="auth-brand">

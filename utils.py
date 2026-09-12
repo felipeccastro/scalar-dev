@@ -505,6 +505,25 @@ def notify(user, kind: str, **payload: Any):
     return Notification.create(user=user, kind=kind, payload_json=json.dumps(payload, default=str))
 
 
+def notification_summary(n) -> str:
+    """Human-readable form of a Notification's kind + payload, for
+    notifications.html — replaces what used to be a raw {{n.payload_json}}
+    dump. Falls back to the kind name for anything not covered here, so a
+    future kind added without updating this function still renders
+    something instead of nothing."""
+    try:
+        payload = json.loads(n.payload_json or "{}")
+    except json.JSONDecodeError:
+        payload = {}
+    if n.kind == "assignment":
+        return f"You were assigned to “{payload.get('task_title', 'a task')}”."
+    if n.kind == "comment":
+        return f"New comment on “{payload.get('task_title', 'a task')}”."
+    if n.kind == "reminder":
+        return payload.get("message") or "Reminder."
+    return n.kind.replace("_", " ").capitalize() + "."
+
+
 # ---------------------------------------------------------------------------
 # Slugify
 # ---------------------------------------------------------------------------
