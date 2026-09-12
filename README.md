@@ -58,7 +58,7 @@ Highlights:
 - **Ask AI** works out of the box against a local [Ollama](https://ollama.com)
   install (`OLLAMA_HOST`/`OLLAMA_MODEL`); set `OPENAI_API_KEY` to use an
   OpenAI-compatible cloud API instead.
-- **Invite/password-reset emails** need `POSTMARK_API_KEY` — without it, the
+- **Invite/password-reset emails** need `RESEND_API_KEY` — without it, the
   app shows the invite/reset link directly in the UI instead of emailing it,
   so the flow still works for local dev.
 - **`SECRET_KEY`** has a dev-only default; set a real value before deploying

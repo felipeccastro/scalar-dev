@@ -365,8 +365,8 @@ def get_flashed_messages() -> list[dict]:
 
 
 # ---------------------------------------------------------------------------
-# Mailer — stdlib urllib + ssl only (Postmark's HTTP API), no certifi: plain
-# ssl.create_default_context() works fine against api.postmarkapp.com on
+# Mailer — stdlib urllib + ssl only (Resend's HTTP API), no certifi: plain
+# ssl.create_default_context() works fine against api.resend.com on
 # Linux via the system CA bundle. Shape ported from admin/services/mailer.py.
 # ---------------------------------------------------------------------------
 
@@ -379,29 +379,28 @@ class MailerError(RuntimeError):
 
 class Mailer:
     APP_NAME = os.environ.get("APP_NAME", "Your App")
-    API_URL = "https://api.postmarkapp.com/email"
+    API_URL = "https://api.resend.com/emails"
     TIMEOUT = 30
 
     @staticmethod
     def _token() -> str | None:
-        return os.environ.get("POSTMARK_API_KEY") or None
+        return os.environ.get("RESEND_API_KEY") or None
 
     @staticmethod
     def _from_address() -> str:
-        return os.environ.get("POSTMARK_FROM", "no-reply@example.com")
+        return os.environ.get("RESEND_FROM", "no-reply@example.com")
 
     @classmethod
     def send(cls, *, to: str, subject: str, html_body: str, text_body: str | None = None) -> dict:
         token = cls._token()
         if not token:
-            raise MailerError("Email isn't configured — set POSTMARK_API_KEY in your .env.")
+            raise MailerError("Email isn't configured — set RESEND_API_KEY in your .env.")
         payload = {
-            "From": cls._from_address(),
-            "To": to,
-            "Subject": subject,
-            "HtmlBody": html_body,
-            "TextBody": text_body or cls._html_to_text(html_body),
-            "MessageStream": "outbound",
+            "from": cls._from_address(),
+            "to": [to],
+            "subject": subject,
+            "html": html_body,
+            "text": text_body or cls._html_to_text(html_body),
         }
         body = json.dumps(payload).encode("utf-8")
         req = urllib.request.Request(
@@ -410,7 +409,13 @@ class Mailer:
             headers={
                 "Content-Type": "application/json",
                 "Accept": "application/json",
-                "X-Postmark-Server-Token": token,
+                "Authorization": f"Bearer {token}",
+                # Cloudflare (fronting api.resend.com) blocks the stdlib's
+                # default "Python-urllib/x.y" User-Agent as a bot signature —
+                # a bare 403 with no JSON body, easy to mistake for a Resend
+                # API error (invalid key, unverified domain, ...) instead of
+                # what it actually is. Any non-default value clears it.
+                "User-Agent": "Binders/1.0",
             },
             method="POST",
         )
@@ -420,12 +425,17 @@ class Mailer:
         except urllib.error.HTTPError as e:
             detail = ""
             try:
-                detail = json.loads(e.read().decode("utf-8", errors="replace")).get("Message", "")
+                # "message" is Resend's own error shape; "detail" covers a
+                # block page from Cloudflare (which fronts api.resend.com)
+                # rejecting the request before it reaches Resend at all —
+                # worth telling apart from an actual Resend-side rejection.
+                body = json.loads(e.read().decode("utf-8", errors="replace"))
+                detail = body.get("message") or body.get("detail") or ""
             except Exception:
                 pass
-            raise MailerError(detail or f"Postmark returned HTTP {e.code}.")
+            raise MailerError(detail or f"Resend returned HTTP {e.code}.")
         except urllib.error.URLError as e:
-            raise MailerError(f"Couldn't reach Postmark: {e.reason}")
+            raise MailerError(f"Couldn't reach Resend: {e.reason}")
         except (OSError, json.JSONDecodeError) as e:
             raise MailerError(f"Email error: {e}")
 
@@ -434,7 +444,8 @@ class Mailer:
         subject = f"{inviter_name} invited you to join {cls.APP_NAME}"
         html_body = cls._wrap(
             f"<p>{_esc(inviter_name)} invited you to join their team on {_esc(cls.APP_NAME)}.</p>"
-            f'<p><a href="{_esc(invite_url)}">Accept the invite</a></p>'
+            f"<p>{cls._button(invite_url, 'Accept the invite')}</p>"
+            f"{cls._fallback_link(invite_url)}"
         )
         return cls.send(to=email, subject=subject, html_body=html_body)
 
@@ -442,8 +453,9 @@ class Mailer:
     def send_password_reset(cls, *, email: str, reset_url: str, ttl_minutes: int) -> dict:
         subject = f"Reset your {cls.APP_NAME} password"
         html_body = cls._wrap(
-            f"<p>Click the link below to reset your password. It expires in {ttl_minutes} minutes.</p>"
-            f'<p><a href="{_esc(reset_url)}">Reset your password</a></p>'
+            f"<p>Click the button below to reset your password. It expires in {ttl_minutes} minutes.</p>"
+            f"<p>{cls._button(reset_url, 'Reset your password')}</p>"
+            f"{cls._fallback_link(reset_url)}"
             "<p>If you didn't request this, you can ignore this email.</p>"
         )
         return cls.send(to=email, subject=subject, html_body=html_body)
@@ -453,14 +465,60 @@ class Mailer:
         """Sent by jobs.py when a Reminder's remind_at passes. Always to the
         reminder's own user — there's no "remind someone else" tool."""
         subject = f"Reminder: {message[:120]}"
-        html_body = cls._wrap(f"<p>{_esc(message)}</p>")
+        html_body = cls._wrap(
+            '<p style="margin:0 0 10px;font-size:11px;font-weight:700;letter-spacing:0.06em;'
+            'text-transform:uppercase;color:#4338ca;">Reminder</p>'
+            f"<p>{_esc(message)}</p>"
+        )
         return cls.send(to=email, subject=subject, html_body=html_body)
 
-    @staticmethod
-    def _wrap(inner_html: str) -> str:
+    # -- Templating: plain inline styles only, no <style> block or CSS custom
+    # properties — email clients strip or ignore both unpredictably. Colors
+    # are the light-theme values of style.css's --primary/--foreground/
+    # --border/--muted-foreground, hand-copied since those tokens themselves
+    # (CSS light-dark(), var()) aren't safe to rely on in an inbox.
+
+    _FONT = "-apple-system,BlinkMacSystemFont,'Segoe UI',Helvetica,Arial,sans-serif"
+
+    @classmethod
+    def _wrap(cls, inner_html: str) -> str:
+        name = _esc(cls.APP_NAME)
         return (
-            '<div style="font-family:sans-serif;max-width:480px;margin:0 auto;padding:24px">'
-            f"{inner_html}</div>"
+            f'<table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="background:#f7f7f8;padding:32px 16px;">'
+            f'<tr><td align="center">'
+            f'<table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="max-width:480px;background:#ffffff;border:1px solid #e2e2e6;border-radius:12px;">'
+            f'<tr><td style="padding:22px 32px;border-bottom:1px solid #e2e2e6;font-family:{cls._FONT};">'
+            f'<span style="font-size:15px;font-weight:700;letter-spacing:-0.01em;color:#4338ca;">{name}</span>'
+            f"</td></tr>"
+            f'<tr><td style="padding:28px 32px;color:#18181b;font-size:15px;line-height:1.6;font-family:{cls._FONT};">'
+            f"{inner_html}"
+            f"</td></tr>"
+            f'<tr><td style="padding:16px 32px 24px;color:#6b6b74;font-size:12px;font-family:{cls._FONT};">'
+            f"Sent by {name}."
+            f"</td></tr>"
+            f"</table>"
+            f"</td></tr>"
+            f"</table>"
+        )
+
+    @staticmethod
+    def _button(url: str, label: str) -> str:
+        return (
+            f'<a href="{_esc(url)}" style="display:inline-block;margin:14px 0 6px;'
+            "padding:10px 22px;background:#4338ca;color:#fafafa;text-decoration:none;"
+            'border-radius:8px;font-size:14px;font-weight:600;">'
+            f"{_esc(label)}</a>"
+        )
+
+    @staticmethod
+    def _fallback_link(url: str) -> str:
+        """A plain-text copy of a button's URL — buttons can fail to render
+        (some clients strip inline-styled <a> tags down to bare text), so
+        the actual link needs to be reachable without one."""
+        escaped = _esc(url)
+        return (
+            '<p style="font-size:13px;color:#6b6b74;">Or paste this link into your browser:<br>'
+            f'<a href="{escaped}" style="color:#4338ca;word-break:break-all;">{escaped}</a></p>'
         )
 
     @staticmethod

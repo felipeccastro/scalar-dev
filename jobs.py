@@ -113,7 +113,7 @@ def _run_due_reminders() -> None:
                 # Same "best-effort, don't block the feature" stance as
                 # invite/reset emails elsewhere — the in-app notification
                 # above already happened, so the reminder isn't silently
-                # lost just because email isn't configured or Postmark is
+                # lost just because email isn't configured or Resend is
                 # down.
                 logger.exception("Couldn't email reminder #%s", reminder.id)
         except Exception:
