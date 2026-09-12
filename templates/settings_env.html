@@ -1,0 +1,58 @@
+%rebase('layout', title='Environment Variables')
+<div class="page-header"><h1>Environment Variables</h1></div>
+
+%if onboarding:
+  <p>Set up the keys you want to use now — AI chat, sending email — or skip this and come back to it later from Settings.</p>
+%end
+<p class="muted">These write straight to this instance's <code>.env</code> file. Most take effect immediately; ports, model names, and file paths need a restart.</p>
+
+<form method="post" action="{{url_for('settings_env_save')}}">
+  <input type="hidden" name="_csrf_token" value="{{csrf_token()}}">
+  %if onboarding:
+    <input type="hidden" name="onboarding" value="1">
+  %end
+
+  %for section in sections:
+    <section>
+      <h2>{{section['title']}}</h2>
+      %if section['description']:
+        <p class="setting-desc">{{!section['description_html']}}</p>
+      %end
+      %for field in section['fields']:
+        <div class="field env-field">
+          <label for="{{field['key']}}">{{field['key']}}</label>
+          %if field['secret']:
+            <div class="env-secret-row">
+              <input type="password" id="{{field['key']}}" name="{{field['key']}}" value="{{current.get(field['key'], '')}}" placeholder="{{field['example']}}" autocomplete="off" spellcheck="false" class="env-input" data-secret-input>
+              <button type="button" class="btn" data-reveal-toggle>Show</button>
+            </div>
+          %else:
+            <input type="text" id="{{field['key']}}" name="{{field['key']}}" value="{{current.get(field['key'], '')}}" placeholder="{{field['example']}}" autocomplete="off" spellcheck="false" class="env-input">
+          %end
+        </div>
+      %end
+    </section>
+    <hr class="details-hr">
+  %end
+
+  <div class="env-actions">
+    %if onboarding:
+      <a class="btn btn-link" href="{{url_for('dashboard')}}">Skip for now</a>
+    %end
+    <button class="btn btn-primary" type="submit">Save changes</button>
+  </div>
+</form>
+
+<script>
+  // Secret fields (API keys etc.) start masked; this just toggles the
+  // input's type — same "no framework, plain DOM" approach as the theme
+  // toggle on the main Settings page.
+  document.querySelectorAll('[data-reveal-toggle]').forEach((btn) => {
+    btn.addEventListener('click', () => {
+      const input = btn.previousElementSibling;
+      const revealing = input.type === 'password';
+      input.type = revealing ? 'text' : 'password';
+      btn.textContent = revealing ? 'Hide' : 'Show';
+    });
+  });
+</script>

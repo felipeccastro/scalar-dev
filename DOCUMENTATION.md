@@ -203,6 +203,18 @@ read" on the /notifications page.
   invite form and a list of pending invite emails, laid out side by side
   (same `.detail-cols` two-column grid as the client/task detail pages;
   stacks on narrow screens).
+- **Environment** (`/settings/env`, owner only) — a form for this instance's
+  `.env` file: API keys, email sending, dev-server settings, etc. The form
+  is generated from `.env.example` itself (section headers + one commented
+  `# KEY=example` line per setting are parsed into fields; no separate list
+  to keep in sync), pre-filled from `os.environ`. Saving rewrites `.env`,
+  commenting a field back out if it's left blank, and updates `os.environ`
+  for the current process — though settings read once at import time
+  (ports, model names, file paths) still need a restart to take effect.
+  Key-/secret-/token-/password-shaped vars render as masked fields with a
+  Show/Hide toggle. The first owner is sent here (`?onboarding=1`, adds a
+  "Skip for now" link to the dashboard) right after `/register` — everyone
+  else reaches it from the Settings page.
 
 ## Error pages
 
@@ -315,7 +327,9 @@ migrations directory).
 
 ## Configuration reference
 
-See `.env.example` for the full list with defaults; the short version:
+See `.env.example` for the full list with defaults; the short version. All
+of these can also be edited from the app itself at `/settings/env` (owner
+only) — see [Settings & appearance](#settings--appearance).
 
 | Var | Purpose |
 |---|---|

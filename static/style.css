@@ -862,6 +862,14 @@ button.btn-primary:active, a.btn.btn-primary:active, [type="submit"].btn-primary
 .setting-name { font-weight: var(--font-medium); }
 .setting-desc { font-size: var(--text-8); color: var(--muted-foreground); margin-top: var(--space-1); }
 
+/* ── Environment editor ─────────────────────────────────── */
+
+.env-field { max-width: 32rem; }
+.env-input { font-family: var(--font-mono); font-size: var(--text-8); }
+.env-secret-row { display: flex; gap: var(--space-2); }
+.env-secret-row .env-input { flex: 1; min-width: 0; }
+.env-actions { display: flex; align-items: center; gap: var(--space-4); }
+
 .theme-toggle {
   display: inline-flex;
   background: var(--background);

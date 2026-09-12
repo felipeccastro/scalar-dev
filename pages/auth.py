@@ -50,7 +50,7 @@ def register_owner_submit():
     seed_demo_data(user)
     login_user(user)
     flash(f"Welcome, {name}! We've added a couple of sample clients and tasks to get you started.", "success")
-    redirect(url_for("dashboard"))
+    redirect(url_for("settings_env") + "?onboarding=1")
 
 
 @app.route("/login", method="GET", name="login")

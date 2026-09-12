@@ -65,6 +65,18 @@
   </div>
 </section>
 
+%if member and member.role == 'owner':
+  <section>
+    <div class="setting-row">
+      <div>
+        <div class="setting-name">Environment</div>
+        <div class="setting-desc">API keys, email sending, and other .env-backed settings for this instance.</div>
+      </div>
+      <a class="btn" href="{{url_for('settings_env')}}">Manage Environment Variables</a>
+    </div>
+  </section>
+%end
+
 <script>
   // Theme preference is client-only (localStorage 'binders-core:theme');
   // layout.html's <head> script applies it to <html> before first paint —
