@@ -134,8 +134,11 @@ def abort(code: int = 500, text: str = "Unknown Error.") -> None:
 
 
 # ---------------------------------------------------------------------------
-# CSRF (hmac-compared token, seeded into the session — same idea as admin's
-# app.py::_csrf_token/_csrf_protect, ported to Bottle's hook API)
+# CSRF token — generated and rendered into forms (see templates' hidden
+# `_csrf_token` field) but not verified anywhere in core. Request forgery
+# protection is a Pro capability (see pro/utils.py's csrf_protect(), enforced
+# by pro/app.py's before_request hook) — core keeps the token plumbing so its
+# templates/forms are unchanged, but nothing here checks it.
 # ---------------------------------------------------------------------------
 
 
@@ -150,27 +153,12 @@ def csrf_token() -> str:
 
 # Routes authenticated independently of the session (see
 # require_internal_secret) have no session-seeded CSRF token to present and
-# no session to be logged in on, so both csrf_protect() below and the
-# login-required hook (app.py) skip them by path. Checked by path rather
-# than a route name (contrast PUBLIC_ROUTES in this module) because
-# Bottle's before_request hooks fire *before* routing — request.route isn't
-# resolved yet at this point, so there's no route to look a name up on.
+# no session to be logged in on, so the login-required hook (app.py) skips
+# them by path. Checked by path rather than a route name (contrast
+# PUBLIC_ROUTES in this module) because Bottle's before_request hooks fire
+# *before* routing — request.route isn't resolved yet at this point, so
+# there's no route to look a name up on.
 SESSION_INDEPENDENT_PATHS = frozenset({"/internal/ai-command"})
-
-
-def csrf_protect() -> None:
-    """Registered as a before_request hook. Every mutating request is
-    checked uniformly, except the paths in SESSION_INDEPENDENT_PATHS —
-    today just the admin app's internal Ask-AI proxy endpoint, which
-    authenticates itself via a shared secret instead of a session."""
-    if request.method in ("GET", "HEAD", "OPTIONS"):
-        return
-    if request.path in SESSION_INDEPENDENT_PATHS:
-        return
-    expected = csrf_token()
-    supplied = request.forms.get("_csrf_token") or request.headers.get("X-CSRF-Token") or ""
-    if not hmac.compare_digest(expected, supplied):
-        abort(400, "Your session expired or the form was out of date — please try again.")
 
 
 def require_internal_secret(view: Callable) -> Callable:

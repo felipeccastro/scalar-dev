@@ -34,7 +34,6 @@ from bottle import Bottle, HTTPError, debug as _bottle_debug, request, run, stat
 
 from models import db, ensure_schema, status_label
 from utils import (
-    csrf_protect,
     csrf_token,
     current_user,
     get_flashed_messages,
@@ -162,17 +161,6 @@ def _open_db() -> None:
 @app.hook("before_request")
 def _open_session_hook() -> None:
     open_session()
-
-
-@app.hook("before_request")
-def _csrf_protect_hook() -> None:
-    # Static assets are served by Bottle's own static_file handler further
-    # down and never mutate anything, so this only ever fires for routes in
-    # pages/ — but it still runs before routing (see bottle's _handle), so it
-    # applies uniformly to every non-GET request regardless of path.
-    if request.path.startswith("/static/"):
-        return
-    csrf_protect()
 
 
 @app.hook("after_request")
