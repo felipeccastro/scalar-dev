@@ -6,4 +6,5 @@ app.db
 app.db-wal
 app.db-shm
 uploads/
-dist/
+dist/*
+!dist/core.zip

@@ -25,6 +25,11 @@ run:
 # to its documented dev SECRET_KEY, same as a fresh git clone. WAL sidecar
 # files are excluded too: they're SQLite's in-flight journal, not data, and
 # get rebuilt from app.db the moment anything reopens it.
+#
+# dist/core.zip is committed to git (see the `!dist/core.zip` line in
+# .gitignore) so Render's build has it without needing to run this target —
+# re-run `make dist` and commit the new zip whenever this app's source
+# changes, or the download button will silently keep serving the old code.
 dist:
 	mkdir -p dist
 	rm -f dist/core.zip
