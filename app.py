@@ -255,7 +255,7 @@ if __name__ == "__main__":
     run(
         app,
         host=os.environ.get("HOST", "0.0.0.0"),
-        port=int(os.environ.get("PORT", 8000)),
+        port=int(os.environ.get("PORT", 5000)),
         debug=DEBUG,
         reloader=DEBUG,
     )
