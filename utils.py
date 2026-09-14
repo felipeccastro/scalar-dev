@@ -43,7 +43,7 @@ _SESSION_ENVIRON_KEY = "templateapp.session"
 def _secret_key() -> str:
     # Re-read on each call (cheap) so a freshly-edited .env is picked up
     # under dev-server reload without restarting the process.
-    return os.environ.get("SECRET_KEY", "binders-core-dev-secret-change-in-production")
+    return os.environ.get("SECRET_KEY", "scalar-core-dev-secret-change-in-production")
 
 
 def _b64encode(raw: bytes) -> str:
@@ -403,7 +403,7 @@ class Mailer:
                 # a bare 403 with no JSON body, easy to mistake for a Resend
                 # API error (invalid key, unverified domain, ...) instead of
                 # what it actually is. Any non-default value clears it.
-                "User-Agent": "Binders/1.0",
+                "User-Agent": "Scalar/1.0",
             },
             method="POST",
         )

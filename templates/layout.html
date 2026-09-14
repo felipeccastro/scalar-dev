@@ -20,9 +20,9 @@
   <meta name="apple-mobile-web-app-capable" content="yes">
   <meta name="mobile-web-app-capable" content="yes">
   <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
-  <meta name="apple-mobile-web-app-title" content="Binders Core">
+  <meta name="apple-mobile-web-app-title" content="Scalar Core">
   <meta name="theme-color" content="#0a0a0b">
-  <!-- Apply the saved theme (localStorage 'binders-core:theme', set live by
+  <!-- Apply the saved theme (localStorage 'scalar-core:theme', set live by
        the Settings page) before the stylesheets below load, so the page
        paints in the right palette from the first frame instead of flashing
        dark then switching to light. Must stay inline/synchronous and come
@@ -31,7 +31,7 @@
   <script>
     (function () {
       try {
-        var t = localStorage.getItem('binders-core:theme');
+        var t = localStorage.getItem('scalar-core:theme');
         if (t !== 'light' && t !== 'dark') t = 'dark';
         document.documentElement.style.colorScheme = t;
         document.documentElement.style.background = (t === 'light') ? '#f7f7f8' : '#0a0a0b';

@@ -1,4 +1,4 @@
-# Binders Core — Feature Documentation
+# Scalar Core — Feature Documentation
 
 This describes what's actually built, for a person (or an agent) picking up
 this project without prior context. Code comments cover *why* a given line
@@ -256,7 +256,7 @@ notification still goes out either way.
 ## Interface & behavior
 
 - **Theme**: dark by default; the Settings toggle writes
-  `localStorage['binders-core:theme']` and sets `document.documentElement
+  `localStorage['scalar-core:theme']` and sets `document.documentElement
   .style.colorScheme`. `style.css`'s `:root` tokens are all defined with CSS
   `light-dark()`, which resolves off that `color-scheme` value — flipping it
   is the entire retheme, no second `[data-theme]` override block to keep in

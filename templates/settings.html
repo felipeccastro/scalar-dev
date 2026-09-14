@@ -78,7 +78,7 @@
 %end
 
 <script>
-  // Theme preference is client-only (localStorage 'binders-core:theme');
+  // Theme preference is client-only (localStorage 'scalar-core:theme');
   // layout.html's <head> script applies it to <html> before first paint —
   // see that file for why "the color-scheme actually in effect" (not a
   // separate data-theme attribute) is the single source of truth here.
@@ -86,7 +86,7 @@
   (() => {
     const group = document.querySelector('[data-theme-toggle]');
     if (!group) return;
-    const KEY = 'binders-core:theme';
+    const KEY = 'scalar-core:theme';
     const options = [...group.querySelectorAll('[data-theme-value]')];
 
     const current = () => document.documentElement.style.colorScheme || 'dark';

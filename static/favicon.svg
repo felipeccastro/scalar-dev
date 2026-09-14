@@ -1,19 +1,18 @@
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 48 48" width="48" height="48" role="img" aria-label="Binders">
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 48 48" width="48" height="48" role="img" aria-label="Scalar">
   <!--
-    The Binders mark: a lowercase "b" whose bowl is a binder ring, knocked out
-    of the brand gradient. Geometry matches templates/_partials/logo.html — the
-    mark is 24×36 on a 48 grid, scaled to 0.78 here to leave tile padding.
+    The Scalar mark: a bold "S" wordmark knocked out of the brand gradient.
+    Placeholder mark — geometry matches templates/_partials/logo.html and
+    scripts/make_icons.py; replace all three together when there's a real logo.
   -->
   <defs>
-    <linearGradient id="binders-grad" x1="0" y1="0" x2="1" y2="1">
+    <linearGradient id="scalar-grad" x1="0" y1="0" x2="1" y2="1">
       <stop offset="0" stop-color="#818cf8"/>
       <stop offset=".55" stop-color="#a855f7"/>
       <stop offset="1" stop-color="#ec4899"/>
     </linearGradient>
   </defs>
-  <rect width="48" height="48" rx="11" fill="url(#binders-grad)"/>
-  <g transform="translate(24 24) scale(.78) translate(-24 -24)">
-    <rect x="12" y="6" width="5" height="36" rx="2.5" fill="#fff"/>
-    <circle cx="24.5" cy="30.5" r="9" fill="none" stroke="#fff" stroke-width="5"/>
-  </g>
+  <rect width="48" height="48" rx="11" fill="url(#scalar-grad)"/>
+  <text x="24" y="25" text-anchor="middle" dominant-baseline="central"
+        font-family="ui-sans-serif, system-ui, -apple-system, 'Segoe UI', sans-serif"
+        font-weight="800" font-size="30" fill="#fff">S</text>
 </svg>
