@@ -1,5 +1,7 @@
 # Scalar Core
 
+[getscalar.dev](https://getscalar.dev) · [![Edit on Replit](https://replit.com/badge/github/felipeccastro/scalar-dev)](https://replit.com/github/felipeccastro/scalar-dev)
+
 A small single-tenant CRM template — Clients, Tasks, comments, attachments,
 notifications, and a read/write **Ask AI** chat assistant — meant as a
 starting point to fork and build on, not as a product of its own.
@@ -80,3 +82,20 @@ uploads/      # attachment storage (gitignored; see UPLOAD_FOLDER)
 See [DOCUMENTATION.md](DOCUMENTATION.md) for what each page/feature actually
 does, and [AGENTS.md](AGENTS.md) for conventions to follow when changing any
 of this.
+
+## Scalar Pro & Enterprise
+
+This repo (Scalar Core) is the free, MIT-licensed foundation. Two other
+apps build on that same foundation, each its own separate source repo —
+not a license key that unlocks this one:
+
+- **[Scalar Pro](https://github.com/felipeccastro/scalar-pro)** — the same
+  foundation grown into role-shaped workflows (sales, ops, product) for
+  running a whole small company.
+- **[Scalar Enterprise](https://github.com/felipeccastro/scalar-enterprise)**
+  — builds further on top of Pro.
+
+Both repos are public — free to read, modify, and run for non-commercial
+use (evaluation, personal projects, learning). Commercial use requires a
+one-time Commercial License; see pricing at
+[getscalar.dev](https://getscalar.dev/#pricing).
