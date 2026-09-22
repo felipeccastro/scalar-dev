@@ -2,6 +2,13 @@
 
 [getscalar.dev](https://getscalar.dev) · [![Edit on Replit](https://replit.com/badge/github/felipeccastro/scalar-dev)](https://replit.com/github/felipeccastro/scalar-dev)
 
+Software has never been easier to start — or easier to turn into a mess.
+AI makes it fast to add code, but it doesn't stop dependencies, frameworks,
+and abstractions from piling up as an app grows. Scalar is a deliberately
+simple foundation — Python, server-rendered HTML, SQLite, no build step —
+meant to be read top to bottom and understood, so you have somewhere sane
+to point an AI coding tool (or your own hands) without the mess compounding.
+
 A small single-tenant CRM template — Clients, Tasks, comments, attachments,
 notifications, and a read/write **Ask AI** chat assistant — meant as a
 starting point to fork and build on, not as a product of its own.
